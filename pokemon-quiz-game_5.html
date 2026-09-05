@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokéQuiz — Terremoto para Todos</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#0a0a0f;--surface:#13131c;--card-bg:#1a1a28;--card-border:#2a2a40;--accent:#f5a623;--accent2:#e040fb;--text:#f0f0f8;--text-muted:#6060a0;--red:#ff4455;--green:#44dd88;--blue:#4488ff;--radius:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif}
+
+/* MODE SELECT */
+#mode-screen{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background:radial-gradient(ellipse at center,#1a1a35 0%,#0a0a0f 70%)}
+#mode-screen h1{font-size:2.6rem;font-weight:800;letter-spacing:-1px;color:var(--accent)}
+#mode-screen p{color:var(--text-muted);font-size:0.95rem}
+.mode-buttons{display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center}
+.mode-btn{padding:1rem 2.8rem;border-radius:var(--radius);border:2px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:1.1rem;font-weight:700;cursor:pointer;transition:all 0.2s}
+.mode-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
+.mode-btn.mod{border-color:var(--accent2);color:var(--accent2)}
+.mode-btn.mod:hover{background:#1e0a2a;transform:translateY(-2px)}
+
+/* APP SHELL — strict column layout */
+#app{display:none;flex-direction:column;height:100vh;overflow:hidden}
+
+/* Camera — fixed 46vh */
+#camera-area{flex:0 0 46vh;min-height:0;background:#0c0c18;border-bottom:1px solid var(--card-border);position:relative;display:flex;align-items:center;justify-content:center}
+.camera-label{position:absolute;top:10px;left:14px;font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px}
+.camera-hint{color:#2a2a50;font-size:0.8rem;border:1.5px dashed #2a2a50;padding:0.5rem 1.2rem;border-radius:8px;pointer-events:none;user-select:none}
+
+/* Consigna bar — fixed height */
+#consigna-bar{flex:0 0 36px;min-height:0;background:var(--surface);border-bottom:1px solid var(--card-border);padding:0 1.2rem;display:flex;align-items:center;gap:0.8rem}
+.clabel{color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;flex-shrink:0}
+#consigna-display{color:var(--accent);font-weight:600;font-size:0.88rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.consigna-hidden-badge{background:#1a0a30;border:1px solid #3a1a60;color:#9055cc;font-size:0.72rem;padding:1px 8px;border-radius:5px;font-weight:600}
+#consigna-stat{color:var(--text-muted);font-size:0.72rem;flex-shrink:0}
+.timer-display{flex-shrink:0;font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
+.timer-display.running{color:var(--green)}.timer-display.warning{color:var(--accent)}.timer-display.danger{color:var(--red)}.timer-display.stopped{color:var(--text-muted)}
+
+/* Cards section — takes remaining space */
+#cards-section{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:6px 8px;background:var(--bg);overflow:hidden}
+.cards-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;flex:1;min-height:0}
+
+/* Card — height driven by JS, no aspect-ratio */
+.poke-card{border-radius:var(--radius);background:var(--card-bg);border:1.5px solid var(--card-border);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:border-color 0.25s;width:100%}
+.poke-card.hidden-card{background:linear-gradient(135deg,#14142a 0%,#0f1e3a 50%,#0f3060 100%)}
+.poke-card.revealed{border-color:var(--accent);background:linear-gradient(135deg,#1a1508 0%,#2a2010 100%)}
+.poke-card.just-revealed{animation:flipIn 0.35s ease-out}
+@keyframes flipIn{0%{transform:rotateY(90deg) scale(0.85);opacity:0}100%{transform:rotateY(0) scale(1);opacity:1}}
+
+/* Hidden face */
+.card-rank{font-size:1.8rem;font-weight:900;color:#22335a;line-height:1}
+.card-pokeball{width:34px;height:34px;border-radius:50%;border:3px solid #22335a;position:relative;margin-top:6px}
+.card-pokeball::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:#22335a;transform:translateY(-50%)}
+.card-pokeball::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#22335a;border:2px solid #14213a}
+
+/* Revealed face */
+.card-sprite{image-rendering:pixelated;display:block;flex-shrink:0}
+.card-name{font-size:0.65rem;font-weight:700;text-align:center;padding:0 4px;color:var(--accent);text-transform:capitalize;line-height:1.2;margin-top:2px}
+.card-val{font-size:0.58rem;color:var(--text-muted);text-align:center;margin-top:1px}
+.card-pos{position:absolute;top:4px;left:6px;font-size:0.58rem;font-weight:800;color:var(--text-muted)}
+.card-types{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.type-badge{font-size:0.5rem;padding:1px 3px;border-radius:3px;font-weight:700;text-transform:uppercase}
+
+/* Mod btn on card */
+.mod-card-btn{position:absolute;bottom:4px;right:4px;padding:2px 6px;border-radius:4px;border:1px solid var(--card-border);background:rgba(0,0,0,0.75);color:var(--text);font-size:0.55rem;cursor:pointer;font-weight:700;transition:all 0.15s;z-index:2}
+.mod-card-btn:hover{background:var(--accent);color:#000;border-color:var(--accent)}
+.mod-card-btn.done{background:#1a3a1a;border-color:#2a5a2a;color:#44dd88;cursor:default;pointer-events:none}
+
+/* Mod panel */
+#mod-panel{flex:0 0 auto;background:var(--surface);border-top:1px solid var(--card-border);padding:5px 10px;display:none;flex-direction:column;gap:4px}
+#mod-panel.visible{display:flex}
+.mod-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.mod-label{color:var(--text-muted);font-size:0.68rem;flex-shrink:0;min-width:52px}
+#mod-panel input[type=text]{padding:3px 7px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.78rem;width:124px}
+#mod-panel input[type=number]{padding:3px 6px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.78rem;width:52px}
+.btn-sm{padding:3px 8px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.72rem;cursor:pointer;font-weight:600;transition:all 0.15s;white-space:nowrap}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-sm.primary{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-sm.primary:hover{background:#ffc040}
+.btn-sm.active{background:#1a3060;border-color:var(--blue);color:var(--blue)}
+
+/* Scoreboard */
+.scoreboard{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.score-pill{display:flex;align-items:center;gap:3px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:2px 7px;font-size:0.72rem}
+.score-name{font-weight:600;color:var(--text)}.score-pts{color:var(--accent);font-weight:700}
+.score-del{color:var(--red);cursor:pointer;font-size:0.65rem;margin-left:1px;opacity:0.6}.score-del:hover{opacity:1}
+
+/* Status bar */
+#status-bar{flex:0 0 22px;background:var(--surface);border-top:1px solid var(--card-border);padding:0 10px;display:flex;align-items:center;gap:6px;font-size:0.68rem;color:var(--text-muted)}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
+.status-dot.live{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:rgba(10,10,15,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;z-index:200;backdrop-filter:blur(4px)}
+#loading.hidden{display:none}
+.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--card-border);border-top-color:var(--accent);animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{color:var(--text-muted);font-size:0.83rem}
+
+/* Toast */
+#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:#222;border:1px solid #444;border-radius:8px;padding:5px 14px;font-size:0.82rem;color:var(--text);z-index:300;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* Consigna modal */
+#cmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:150;align-items:center;justify-content:center}
+#cmodal-inner{background:var(--surface);border:1px solid var(--card-border);border-radius:14px;padding:1.2rem;max-width:460px;width:90vw;max-height:75vh;overflow-y:auto}
+#cmodal-inner h3{color:var(--accent);margin-bottom:0.8rem;font-size:0.95rem}
+#clist{display:flex;flex-direction:column;gap:3px}
+
+/* Type colors */
+.t-fire{background:#9d2200;color:#ffa070}.t-water{background:#00487a;color:#88ccff}.t-grass{background:#1a4d00;color:#88ee66}.t-electric{background:#5a4a00;color:#ffe066}.t-psychic{background:#7a0040;color:#ff88cc}.t-ice{background:#00405a;color:#88eeff}.t-dragon{background:#2a0080;color:#9988ff}.t-dark{background:#1a1a1a;color:#aaaaaa}.t-fairy{background:#6a0050;color:#ffaadd}.t-fighting{background:#5a1a00;color:#ff9966}.t-flying{background:#2a3a6a;color:#aabbff}.t-poison{background:#3a0060;color:#cc88ff}.t-ground{background:#4a3000;color:#ddaa66}.t-rock{background:#3a3020;color:#bbaa88}.t-bug{background:#1a4000;color:#88cc44}.t-ghost{background:#220040;color:#9966cc}.t-steel{background:#2a3a4a;color:#aabbcc}.t-normal{background:#2a2a2a;color:#aaaaaa}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><p id="loading-text">Conectando...</p></div>
+<div id="toast"></div>
+
+<!-- MODE SELECT -->
+<div id="mode-screen" style="display:none">
+  <div style="text-align:center"><h1>⚡ PokéQuiz</h1><p style="margin-top:0.3rem">Terremoto para Todos</p></div>
+  <div class="mode-buttons">
+    <button class="mode-btn" onclick="selectMode('spectator')">👁️ Espectador</button>
+    <button class="mode-btn mod" onclick="selectMode('mod')">🎮 Mod / Host</button>
+  </div>
+</div>
+
+<!-- CONSIGNA MODAL -->
+<div id="cmodal">
+  <div id="cmodal-inner">
+    <h3>Elegir consigna</h3>
+    <div id="clist"></div>
+    <div style="margin-top:0.7rem"><button class="btn-sm danger" onclick="closeModal()">Cancelar</button></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div id="camera-area">
+    <span class="camera-label">Stream</span>
+    <div class="camera-hint">← Espacio para cámaras OBS →</div>
+  </div>
+
+  <div id="consigna-bar">
+    <span class="clabel">Consigna</span>
+    <span id="consigna-display">—</span>
+    <div class="timer-display stopped" id="timer-display">—</div>
+    <span id="consigna-stat"></span>
+  </div>
+
+  <div id="cards-section">
+    <div class="cards-row" id="row1"></div>
+    <div class="cards-row" id="row2"></div>
+  </div>
+
+  <div id="mod-panel">
+    <div class="mod-row">
+      <span class="mod-label">Ronda</span>
+      <button class="btn-sm primary" onclick="generateNewGame()">🎲 Nueva ronda</button>
+      <button class="btn-sm" onclick="showConsignaMenu()">📋 Consigna</button>
+      <button class="btn-sm" id="btn-consigna" onclick="toggleConsigna()">👁 Revelar consigna</button>
+      <button class="btn-sm" id="btn-timer" onclick="toggleTimer()">⏱ Timer</button>
+      <input type="number" id="timer-min" value="2" min="1" max="10" title="Minutos">
+      <span style="font-size:0.65rem;color:var(--text-muted)">min</span>
+      <button class="btn-sm danger" onclick="resetAll()">↺ Reset</button>
+    </div>
+    <div class="mod-row">
+      <span class="mod-label">Puntos</span>
+      <input type="text" id="pname" placeholder="Nombre jugador">
+      <input type="number" id="ppts" value="1" min="1" max="10">
+      <button class="btn-sm primary" onclick="addPoints()">+ Dar puntos</button>
+      <div class="scoreboard" id="scoreboard"></div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Conectando...</span>
+    <span style="margin-left:auto">PokéQuiz · Terremoto para Todos</span>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://qsufableozmyugcrhcai.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzdWZhYmxlb3pteXVnY3JoY2FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1MjM4MDIsImV4cCI6MjEwMzA5OTgwMn0.F_H7QSVtakgt6iYfYvtKM7moBzB_8ftjdj0jk-FWX_8';
+const CHANNEL = 'pokequiz-terremoto';
+
+let mode=null, sbClient=null, channel=null;
+
+const state = {
+  consigna:null, consignaVisible:false,
+  pokemon:[], revealed:{}, scores:{},
+  timerEnd:null, timerRunning:false
+};
+
+// ── LAYOUT: calculate card heights ──────────────────
+function calcCardHeight(){
+  const app = document.getElementById('app');
+  if(!app || app.style.display==='none') return 120;
+  const camera = document.getElementById('camera-area');
+  const cbar   = document.getElementById('consigna-bar');
+  const modp   = document.getElementById('mod-panel');
+  const sbar   = document.getElementById('status-bar');
+  const total  = window.innerHeight;
+  const used   = (camera ? camera.offsetHeight : 0)
+               + (cbar   ? cbar.offsetHeight   : 36)
+               + (modp && modp.style.display!=='none' ? modp.offsetHeight : 0)
+               + (sbar   ? sbar.offsetHeight   : 22);
+  const avail  = total - used - 20; // 20px total padding/gap
+  return Math.max(90, Math.floor(avail / 2) - 6);
+}
+
+function applyCardHeights(){
+  const h = calcCardHeight() + 'px';
+  document.querySelectorAll('.poke-card').forEach(c => c.style.height = h);
+  // Sprite size: about 55% of card height, max 96px
+  const cardH = calcCardHeight();
+  const spriteSize = Math.min(96, Math.floor(cardH * 0.52)) + 'px';
+  document.querySelectorAll('.card-sprite').forEach(img => {
+    img.style.width = spriteSize;
+    img.style.height = spriteSize;
+  });
+}
+
+window.addEventListener('resize', applyCardHeights);
+
+// ── AUDIO ──────────────────────────────────────────
+let actx=null;
+function getACtx(){ if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)(); return actx; }
+function playReveal(){
+  try{
+    const ctx=getACtx();
+    [523,659,784,1047].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=f; o.type='sine';
+      const t=ctx.currentTime+i*0.08;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.18,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+      o.start(t); o.stop(t+0.3);
+    });
+  }catch(e){}
+}
+function playEnd(){
+  try{
+    const ctx=getACtx();
+    [440,349,293,220].forEach((f,i)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=f; o.type='square';
+      const t=ctx.currentTime+i*0.15;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.1,t+0.04);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
+      o.start(t); o.stop(t+0.45);
+    });
+  }catch(e){}
+}
+
+// ── TIMER ──────────────────────────────────────────
+let timerIv=null;
+function toggleTimer(){
+  if(state.timerRunning){
+    state.timerRunning=false; state.timerEnd=null;
+    clearInterval(timerIv);
+    broadcast({type:'timer',payload:{running:false,end:null}});
+    updTimer();
+  } else {
+    const m=parseInt(document.getElementById('timer-min').value)||2;
+    state.timerEnd=Date.now()+m*60000;
+    state.timerRunning=true;
+    broadcast({type:'timer',payload:{running:true,end:state.timerEnd}});
+    startTick();
+  }
+  const b=document.getElementById('btn-timer');
+  b.textContent=state.timerRunning?'⏹ Parar':'⏱ Timer';
+  b.className=state.timerRunning?'btn-sm active':'btn-sm';
+}
+function startTick(){
+  clearInterval(timerIv);
+  timerIv=setInterval(()=>{
+    if(!state.timerRunning||!state.timerEnd){clearInterval(timerIv);return;}
+    const rem=state.timerEnd-Date.now();
+    if(rem<=0){
+      state.timerRunning=false; clearInterval(timerIv); playEnd();
+      const el=document.getElementById('timer-display');
+      el.textContent='⏰ 0:00'; el.className='timer-display danger';
+      if(mode==='mod'){const b=document.getElementById('btn-timer');b.textContent='⏱ Timer';b.className='btn-sm';}
+      return;
+    }
+    updTimer(rem);
+  },250);
+}
+function updTimer(rem){
+  const el=document.getElementById('timer-display');
+  if(!el) return;
+  if(rem===undefined){
+    if(state.timerRunning&&state.timerEnd) rem=Math.max(0,state.timerEnd-Date.now());
+    else{el.textContent='—';el.className='timer-display stopped';return;}
+  }
+  const s=Math.ceil(rem/1000),m=Math.floor(s/60),ss=s%60;
+  el.textContent=`${m}:${String(ss).padStart(2,'0')}`;
+  el.className='timer-display '+(s>30?'running':s>10?'warning':'danger');
+}
+
+// ── CONSIGNAS ──────────────────────────────────────
+const TYPES=['fire','water','grass','electric','psychic','ice','dragon','dark','fairy','fighting','flying','poison','ground','rock','bug','ghost','steel','normal'];
+const GENS=[{n:1,l:1,h:151},{n:2,l:152,h:251},{n:3,l:252,h:386},{n:4,l:387,h:493},{n:5,l:494,h:649},{n:6,l:650,h:721},{n:7,l:722,h:809},{n:8,l:810,h:905}];
+const TES={fire:'Fuego',water:'Agua',grass:'Planta',electric:'Eléctrico',psychic:'Psíquico',ice:'Hielo',dragon:'Dragón',dark:'Siniestro',fairy:'Hada',fighting:'Lucha',flying:'Volador',poison:'Veneno',ground:'Tierra',rock:'Roca',bug:'Bicho',ghost:'Fantasma',steel:'Acero',normal:'Normal'};
+const GES={1:'Gen 1',2:'Gen 2',3:'Gen 3',4:'Gen 4',5:'Gen 5',6:'Gen 6',7:'Gen 7',8:'Gen 8'};
+const STATS=[
+  {key:'speed',label:'Velocidad',dir:'desc'},
+  {key:'attack',label:'Ataque',dir:'desc'},
+  {key:'defense',label:'Defensa',dir:'desc'},
+  {key:'hp',label:'HP',dir:'desc'},
+  {key:'special-attack',label:'Ataque Especial',dir:'desc'},
+  {key:'special-defense',label:'Defensa Especial',dir:'desc'},
+  {key:'bst',label:'BST total',dir:'desc'},
+  {key:'height',label:'Altura (más altos)',dir:'desc'},
+  {key:'weight',label:'Peso (más pesados)',dir:'desc'},
+  {key:'height',label:'Altura (más bajitos)',dir:'asc'},
+  {key:'weight',label:'Peso (más livianos)',dir:'asc'},
+];
+let pool=[];
+function buildPool(){
+  const list=[];
+  const types=shuffle([...TYPES]);
+  const gens=shuffle([...GENS]);
+  for(const t of types) for(const st of shuffle([...STATS]).slice(0,4))
+    list.push({label:`Tipo ${TES[t]} — Top 10 por ${st.label}`,type:t,gen:null,stat:st});
+  for(const g of gens) for(const st of shuffle([...STATS]).slice(0,4))
+    list.push({label:`${GES[g.n]} — Top 10 por ${st.label}`,type:null,gen:g,stat:st});
+  for(const t of types.slice(0,6)) for(const g of gens.slice(0,4)){
+    const st=STATS[Math.floor(Math.random()*STATS.length)];
+    list.push({label:`Tipo ${TES[t]} en ${GES[g.n]} — Top 10 por ${st.label}`,type:t,gen:g,stat:st});
+  }
+  return shuffle(list);
+}
+
+// ── POKEAPI ────────────────────────────────────────
+const cache={};
+async function fetchForConsigna(c){
+  setLoading(true,'Consultando PokeAPI...');
+  try{
+    let entries=[];
+    if(c.type){
+      const r=await fetch(`https://pokeapi.co/api/v2/type/${c.type}`);
+      const d=await r.json();
+      entries=d.pokemon.map(p=>p.pokemon);
+    } else if(c.gen){
+      const r=await fetch(`https://pokeapi.co/api/v2/generation/${c.gen.n}`);
+      const d=await r.json();
+      entries=d.pokemon_species.map(s=>({name:s.name,url:s.url.replace('pokemon-species','pokemon')}));
+    }
+    const xid=u=>{const m=(u||'').match(/\/(\d+)\/?$/);return m?+m[1]:9999;};
+    entries=entries.filter(e=>{
+      const id=xid(e.url||'');
+      if(c.gen) return id>=c.gen.l&&id<=c.gen.h&&id<=1010;
+      return id>=1&&id<=1010;
+    });
+    setLoading(true,`Cargando ${Math.min(entries.length,300)} Pokémon...`);
+    const BATCH=40; let all=[];
+    for(let i=0;i<Math.min(entries.length,300);i+=BATCH){
+      const batch=entries.slice(i,i+BATCH);
+      const res=await Promise.allSettled(batch.map(e=>fetchOne(e)));
+      for(const r of res) if(r.status==='fulfilled'&&r.value) all.push(r.value);
+      setLoading(true,`${Math.min(i+BATCH,Math.min(entries.length,300))} / ${Math.min(entries.length,300)}`);
+    }
+    const k=c.stat.key;
+    all.sort((a,b)=>c.stat.dir==='desc'?(b[k]??0)-(a[k]??0):(a[k]??0)-(b[k]??0));
+    const top10=all.slice(0,10).map((p,i)=>({...p,rank:i+1}));
+    setLoading(false);
+    return top10;
+  }catch(e){console.error(e);setLoading(false);return[];}
+}
+async function fetchOne(entry){
+  const name=entry.name;
+  if(cache[name]) return cache[name];
+  try{
+    const url=entry.url||`https://pokeapi.co/api/v2/pokemon/${name}`;
+    const r=await fetch(url); if(!r.ok) return null;
+    const d=await r.json();
+    const stats={};
+    for(const s of d.stats) stats[s.stat.name]=s.base_stat;
+    const bst=Object.values(stats).reduce((a,b)=>a+b,0);
+    // Use PokeAPI's own sprite URL — works from any context
+    const sprite = d.sprites.front_default || '';
+    const obj={
+      id:d.id,name:d.name,sprite,
+      types:d.types.map(t=>t.type.name),
+      hp:stats['hp']||0,attack:stats['attack']||0,defense:stats['defense']||0,
+      'special-attack':stats['special-attack']||0,'special-defense':stats['special-defense']||0,
+      speed:stats['speed']||0,bst,height:d.height,weight:d.weight
+    };
+    cache[name]=obj; return obj;
+  }catch{return null;}
+}
+
+// ── RENDER ─────────────────────────────────────────
+function renderCards(){
+  ['row1','row2'].forEach(id=>document.getElementById(id).innerHTML='');
+  const isMod=mode==='mod';
+  const cardH=calcCardHeight();
+  const spriteSize=Math.min(96,Math.floor(cardH*0.52));
+
+  state.pokemon.forEach((p,i)=>{
+    const isRev=!!state.revealed[i];
+    const row=i<5?'row1':'row2';
+    const card=document.createElement('div');
+    card.className='poke-card '+(isRev?'revealed':'hidden-card');
+    card.id=`card-${i}`;
+    card.style.height=cardH+'px';
+
+    const sk=state.consigna?.stat?.key||'speed';
+    const sl=state.consigna?.stat?.label||'';
+    const sv=fmtStat(p[sk],sk);
+
+    if(isRev){
+      // Build sprite: try the API url, fallback to number-based URL
+      const spriteUrl = p.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
+      card.innerHTML=`
+        <span class="card-pos">#${p.rank}</span>
+        <img class="card-sprite" src="${spriteUrl}"
+             style="width:${spriteSize}px;height:${spriteSize}px"
+             onerror="this.style.display='none'"
+             alt="${p.name}">
+        <span class="card-name">${p.name}</span>
+        <div class="card-types">${p.types.map(t=>`<span class="type-badge t-${t}">${t}</span>`).join('')}</div>
+        <span class="card-val">${sl}: ${sv}</span>
+        ${isMod?`<button class="mod-card-btn done">✓</button>`:''}
+      `;
+    } else {
+      card.innerHTML=`
+        <div class="card-rank">${p.rank}</div>
+        <div class="card-pokeball"></div>
+        ${isMod?`<button class="mod-card-btn" onclick="revealCard(${i})">Revelar</button>`:''}
+      `;
+    }
+    document.getElementById(row).appendChild(card);
+  });
+  updConsigna();
+  renderScore();
+}
+
+function fmtStat(v,k){
+  if(v===undefined||v===null) return '?';
+  if(k==='height') return (v/10).toFixed(1)+'m';
+  if(k==='weight') return (v/10).toFixed(1)+'kg';
+  return v;
+}
+function updConsigna(){
+  const el=document.getElementById('consigna-display');
+  const stat=document.getElementById('consigna-stat');
+  if(!state.consigna){el.textContent='—';return;}
+  if(state.consignaVisible){
+    el.textContent=state.consigna.label;
+    el.style.color='';
+  } else {
+    el.innerHTML='<span class="consigna-hidden-badge">🔒 Consigna oculta</span>';
+  }
+  stat.textContent=`${Object.keys(state.revealed).length}/10`;
+  if(mode==='mod'){
+    const b=document.getElementById('btn-consigna');
+    if(b){b.textContent=state.consignaVisible?'🙈 Ocultar consigna':'👁 Revelar consigna';b.className=state.consignaVisible?'btn-sm active':'btn-sm';}
+  }
+}
+function renderScore(){
+  const sb=document.getElementById('scoreboard');
+  if(!sb) return;
+  sb.innerHTML='';
+  Object.entries(state.scores).sort((a,b)=>b[1]-a[1]).forEach(([name,pts])=>{
+    const el=document.createElement('div');
+    el.className='score-pill';
+    el.innerHTML=`<span class="score-name">${name}</span><span class="score-pts">${pts}p</span><span class="score-del" onclick="removePlayer('${esc(name)}')">✕</span>`;
+    sb.appendChild(el);
+  });
+}
+const esc=s=>s.replace(/'/g,"\\'");
+
+// ── ACTIONS ────────────────────────────────────────
+async function generateNewGame(c){
+  if(!pool.length) pool=buildPool();
+  const consigna=c||pool.shift();
+  if(!consigna){pool=buildPool();return generateNewGame();}
+  const pokemon=await fetchForConsigna(consigna);
+  if(pokemon.length<10){toast('No hay suficientes Pokémon, probando otra...');return generateNewGame();}
+  state.consigna=consigna;state.pokemon=pokemon;
+  state.revealed={};state.consignaVisible=false;
+  state.timerRunning=false;state.timerEnd=null;
+  clearInterval(timerIv);updTimer();
+  broadcast({type:'state',payload:ser()});
+  renderCards();
+  // Apply heights after render
+  setTimeout(applyCardHeights,0);
+}
+
+function revealCard(i){
+  if(state.revealed[i]) return;
+  state.revealed[i]=true;
+  playReveal();
+  broadcast({type:'reveal',payload:{index:i,revealed:state.revealed}});
+  renderCards();
+  setTimeout(()=>{
+    const card=document.getElementById(`card-${i}`);
+    if(card) card.classList.add('just-revealed');
+    setTimeout(()=>card&&card.classList.remove('just-revealed'),400);
+    applyCardHeights();
+  },0);
+}
+function toggleConsigna(){
+  state.consignaVisible=!state.consignaVisible;
+  broadcast({type:'cv',payload:{visible:state.consignaVisible}});
+  updConsigna();
+}
+function addPoints(){
+  const name=document.getElementById('pname').value.trim();
+  const pts=parseInt(document.getElementById('ppts').value)||1;
+  if(!name) return;
+  state.scores[name]=(state.scores[name]||0)+pts;
+  broadcast({type:'scores',payload:state.scores});
+  renderScore();
+  toast(`+${pts}pt a ${name}`);
+}
+function removePlayer(name){
+  delete state.scores[name];
+  broadcast({type:'scores',payload:state.scores});
+  renderScore();
+}
+function resetAll(){
+  if(!confirm('¿Resetear la ronda?')) return;
+  state.revealed={};state.scores={};state.consignaVisible=false;
+  state.timerRunning=false;state.timerEnd=null;
+  clearInterval(timerIv);updTimer();
+  broadcast({type:'state',payload:ser()});
+  renderCards();
+  setTimeout(applyCardHeights,0);
+}
+function ser(){return{consigna:state.consigna,consignaVisible:state.consignaVisible,pokemon:state.pokemon,revealed:state.revealed,scores:state.scores,timerRunning:state.timerRunning,timerEnd:state.timerEnd};}
+function applyS(s){
+  if(s.consigna) state.consigna=s.consigna;
+  if(s.pokemon)  state.pokemon=s.pokemon;
+  if(s.revealed) state.revealed=s.revealed;
+  if(s.scores)   state.scores=s.scores;
+  state.consignaVisible=!!s.consignaVisible;
+  state.timerRunning=!!s.timerRunning;
+  state.timerEnd=s.timerEnd||null;
+  if(state.timerRunning) startTick(); else {clearInterval(timerIv);updTimer();}
+  renderCards();
+  setTimeout(applyCardHeights,50);
+}
+
+// ── CONSIGNA MENU ──────────────────────────────────
+function showConsignaMenu(){
+  if(!pool.length) pool=buildPool();
+  const list=document.getElementById('clist');
+  list.innerHTML='';
+  pool.slice(0,24).forEach(c=>{
+    const b=document.createElement('button');
+    b.className='btn-sm';b.style.textAlign='left';b.textContent=c.label;
+    b.onclick=()=>{closeModal();generateNewGame(c);};
+    list.appendChild(b);
+  });
+  document.getElementById('cmodal').style.display='flex';
+}
+function closeModal(){document.getElementById('cmodal').style.display='none';}
+
+// ── REALTIME ───────────────────────────────────────
+function broadcast(msg){if(channel) channel.send({type:'broadcast',event:'quiz',payload:msg});}
+function onMsg(msg){
+  if(msg.type==='state') applyS(msg.payload);
+  else if(msg.type==='reveal'){
+    const prev=state.revealed[msg.payload.index];
+    state.revealed=msg.payload.revealed;
+    if(!prev&&state.revealed[msg.payload.index]) playReveal();
+    renderCards();
+    setTimeout(()=>{
+      const card=document.getElementById(`card-${msg.payload.index}`);
+      if(card) card.classList.add('just-revealed');
+      setTimeout(()=>card&&card.classList.remove('just-revealed'),400);
+      applyCardHeights();
+    },0);
+    updConsigna();
+  }
+  else if(msg.type==='scores'){state.scores=msg.payload;renderScore();}
+  else if(msg.type==='cv'){state.consignaVisible=msg.payload.visible;updConsigna();}
+  else if(msg.type==='timer'){
+    state.timerRunning=msg.payload.running;state.timerEnd=msg.payload.end;
+    if(state.timerRunning) startTick(); else{clearInterval(timerIv);updTimer();}
+  }
+  else if(msg.type==='request_state'&&mode==='mod'){
+    setTimeout(()=>broadcast({type:'state',payload:ser()}),300);
+  }
+}
+
+// ── UI HELPERS ─────────────────────────────────────
+function setLoading(show,txt='Cargando...'){
+  document.getElementById('loading-text').textContent=txt;
+  document.getElementById('loading').classList.toggle('hidden',!show);
+}
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2200);
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+// ── INIT ───────────────────────────────────────────
+async function selectMode(m){
+  mode=m;
+  document.getElementById('mode-screen').style.display='none';
+  sbClient=supabase.createClient(SB_URL,SB_KEY);
+  channel=sbClient.channel(CHANNEL,{config:{broadcast:{self:false}}});
+  channel.on('broadcast',{event:'quiz'},({payload})=>onMsg(payload));
+  channel.subscribe(status=>{
+    const dot=document.getElementById('status-dot');
+    const txt=document.getElementById('status-text');
+    if(status==='SUBSCRIBED'){
+      dot.classList.add('live');txt.textContent=`En vivo · ${CHANNEL}`;
+      if(m==='spectator') setTimeout(()=>channel.send({type:'broadcast',event:'quiz',payload:{type:'request_state'}}),800);
+    } else {dot.classList.remove('live');txt.textContent='Reconectando...';}
+  });
+  document.getElementById('app').style.display='flex';
+  if(m==='mod'){
+    document.getElementById('mod-panel').style.display='flex';
+    setLoading(false);
+    pool=buildPool();
+    await generateNewGame();
+  } else {
+    setLoading(false);
+    document.getElementById('consigna-display').textContent='Esperando al mod...';
+  }
+  setTimeout(applyCardHeights,100);
+}
+
+setLoading(false);
+document.getElementById('mode-screen').style.display='flex';
+</script>
+</body>
+</html>
