@@ -68,6 +68,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .mod-card-btn:hover{background:var(--accent);color:#000;border-color:var(--accent)}
 .mod-card-btn.done{background:#1a3a1a;border-color:#2a5a2a;color:#44dd88;cursor:default;pointer-events:none}
 
+/* Mod sees hidden cards dimmed but visible */
+.poke-card.mod-hidden{border-color:#1e2a3a;background:linear-gradient(135deg,#0e1520 0%,#0a1830 100%)}
+.poke-card.mod-hidden .card-name{color:#7090b0}
+.poke-card.mod-hidden .card-val{color:#445566}
+.poke-card.mod-hidden .card-sprite{opacity:0.45;filter:grayscale(60%)}
+.poke-card.mod-hidden .card-pos{color:#445566}
+.poke-card.mod-hidden .type-badge{opacity:0.4}
+
 /* Mod panel */
 #mod-panel{flex:0 0 auto;background:var(--surface);border-top:1px solid var(--card-border);padding:5px 10px;display:none;flex-direction:column;gap:4px}
 #mod-panel.visible{display:flex}
@@ -412,17 +420,17 @@ function renderCards(){
     const isRev=!!state.revealed[i];
     const row=i<5?'row1':'row2';
     const card=document.createElement('div');
-    card.className='poke-card '+(isRev?'revealed':'hidden-card');
     card.id=`card-${i}`;
     card.style.height=cardH+'px';
 
     const sk=state.consigna?.stat?.key||'speed';
     const sl=state.consigna?.stat?.label||'';
     const sv=fmtStat(p[sk],sk);
+    const spriteUrl=p.sprite||`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
 
-    if(isRev){
-      // Build sprite: try the API url, fallback to number-based URL
-      const spriteUrl = p.sprite || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
+    if(isMod){
+      // Mod always sees the pokemon — dimmed if not revealed yet
+      card.className='poke-card '+(isRev?'revealed':'mod-hidden');
       card.innerHTML=`
         <span class="card-pos">#${p.rank}</span>
         <img class="card-sprite" src="${spriteUrl}"
@@ -432,14 +440,32 @@ function renderCards(){
         <span class="card-name">${p.name}</span>
         <div class="card-types">${p.types.map(t=>`<span class="type-badge t-${t}">${t}</span>`).join('')}</div>
         <span class="card-val">${sl}: ${sv}</span>
-        ${isMod?`<button class="mod-card-btn done">✓</button>`:''}
+        ${isRev
+          ? `<button class="mod-card-btn done">✓ Revelado</button>`
+          : `<button class="mod-card-btn" onclick="revealCard(${i})">▶ Revelar</button>`
+        }
       `;
     } else {
-      card.innerHTML=`
-        <div class="card-rank">${p.rank}</div>
-        <div class="card-pokeball"></div>
-        ${isMod?`<button class="mod-card-btn" onclick="revealCard(${i})">Revelar</button>`:''}
-      `;
+      // Spectator: pokeball until revealed
+      if(isRev){
+        card.className='poke-card revealed';
+        card.innerHTML=`
+          <span class="card-pos">#${p.rank}</span>
+          <img class="card-sprite" src="${spriteUrl}"
+               style="width:${spriteSize}px;height:${spriteSize}px"
+               onerror="this.style.display='none'"
+               alt="${p.name}">
+          <span class="card-name">${p.name}</span>
+          <div class="card-types">${p.types.map(t=>`<span class="type-badge t-${t}">${t}</span>`).join('')}</div>
+          <span class="card-val">${sl}: ${sv}</span>
+        `;
+      } else {
+        card.className='poke-card hidden-card';
+        card.innerHTML=`
+          <div class="card-rank">${p.rank}</div>
+          <div class="card-pokeball"></div>
+        `;
+      }
     }
     document.getElementById(row).appendChild(card);
   });
