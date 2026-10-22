@@ -131,7 +131,17 @@ input[type=text],input[type=number],select{background:var(--bg);border:2px solid
       <h2>Incluir</h2>
       <label class="toggle"><input type="checkbox" id="incLeg" checked> Legendarios</label>
       <label class="toggle"><input type="checkbox" id="incMyth" checked> Singulares (míticos)</label>
-      <label class="toggle"><input type="checkbox" id="incForms"> Megas, formas regionales y otras</label>
+    </div>
+
+    <div class="group">
+      <h2>Formas</h2>
+      <label class="toggle"><input type="checkbox" id="incMega"> Megaevoluciones y primigenios</label>
+      <label class="toggle"><input type="checkbox" id="incRegional"> Formas regionales (Alola, Galar, Hisui, Paldea)</label>
+      <label class="toggle"><input type="checkbox" id="incOther"> Otras formas (Rotom, Deoxys, Therian…)</label>
+    </div>
+
+    <div class="group">
+      <h2>Evolución</h2>
       <label class="toggle"><input type="checkbox" id="onlyFinal"> Solo sin evolución posterior</label>
     </div>
 
@@ -216,6 +226,8 @@ window.addEventListener('storage', e => { if (e.key === 'top10_state_'+room && e
 function setStatus(ok, tx){ const d=document.getElementById('dot'), s=document.getElementById('statusTx'); if(d){d.classList.toggle('ok',ok); s.textContent=tx;} }
 
 const tpChip = t => `<span class="tp" style="background:${TYPES[t-1][1]}">${TYPES[t-1][0]}</span>`;
+// Tipo de forma según el nombre: '' base, 'mega', 'regional' u 'other'
+const formKind = p => !p[6] ? '' : /\b(Mega|Primal)\b/.test(p[1]) ? 'mega' : /\b(Alola|Galar|Hisui|Paldea)\b/.test(p[1]) ? 'regional' : 'other';
 const statVal = (p, s) => s === 8 ? HW[p[0]][0] : s === 7 ? HW[p[0]][1] : s === 6 ? p[4].reduce((a,b)=>a+b,0) : p[4][s];
 const statText = (p, s) => s === 7 ? statVal(p,s).toLocaleString('es-AR') + ' kg' : s === 8 ? statVal(p,s).toLocaleString('es-AR') + ' m' : statVal(p,s);
 
@@ -276,12 +288,13 @@ function initPanel(){
   genChips.onclick = e => { const g=+e.target.dataset.g; if(!g) return; f.gens.has(g)?f.gens.delete(g):f.gens.add(g); e.target.classList.toggle('on'); refresh(); };
   document.querySelectorAll('[data-clear]').forEach(b=> b.onclick=()=>{ f[b.dataset.clear].clear(); (b.dataset.clear==='types'?typeChips:genChips).querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); refresh(); });
   statSel.onchange = () => { f.stat=+statSel.value; refresh(); };
-  ['incLeg','incMyth','incForms','onlyFinal'].forEach(id=> document.getElementById(id).onchange = refresh);
+  ['incLeg','incMyth','incMega','incRegional','incOther','onlyFinal'].forEach(id=> document.getElementById(id).onchange = refresh);
 
   function filtered(){
-    const leg=incLeg.checked, myth=incMyth.checked, forms=incForms.checked, fin=onlyFinal.checked;
+    const leg=incLeg.checked, myth=incMyth.checked, fin=onlyFinal.checked;
+    const forms = {mega:incMega.checked, regional:incRegional.checked, other:incOther.checked};
     let r = DEX.filter(p=>{
-      if (!forms && p[6]) return false;
+      if (p[6] && !forms[formKind(p)]) return false;
       if (!leg && p[5]===1) return false;
       if (!myth && p[5]===2) return false;
       if (fin && p[7]) return false;
