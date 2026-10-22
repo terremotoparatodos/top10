@@ -126,10 +126,6 @@ input[type=text],input[type=number],select{background:var(--bg);border:2px solid
       </div>
     </div>
 
-    <div class="group">
-      <h2>Mínimos de stats <small>opcional</small></h2>
-      <div id="mins" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"></div>
-    </div>
 
     <div class="group">
       <h2>Incluir</h2>
@@ -260,7 +256,7 @@ function initTV(){
    ========================================================= */
 function initPanel(){
   document.getElementById('panel').classList.remove('hidden');
-  const f = { types:new Set(), typeMode:'any', gens:new Set(), stat:6, order:'desc', mins:[0,0,0,0,0,0] };
+  const f = { types:new Set(), typeMode:'any', gens:new Set(), stat:6, order:'desc' };
   let excluded = new Set();
   let show = null; // lo que está "en el aire": {key,title,tags,entries,revealed}
 
@@ -272,8 +268,6 @@ function initPanel(){
   const statSel = document.getElementById('statSel');
   STATS.forEach((s,i)=> statSel.insertAdjacentHTML('beforeend', `<option value="${i}">${s}</option>`));
   statSel.value = 6;
-  const mins = document.getElementById('mins');
-  STATS.slice(0,6).forEach((s,i)=> mins.insertAdjacentHTML('beforeend', `<label style="font-size:12px;color:var(--muted)">${s}<input type="number" min="0" max="255" placeholder="0" data-m="${i}"></label>`));
 
   const seg = (id, key) => { const el=document.getElementById(id); const sync=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===f[key])); el.onclick=e=>{ if(e.target.dataset.v){ f[key]=e.target.dataset.v; sync(); refresh(); } }; sync(); };
   seg('typeMode','typeMode'); seg('orderSeg','order');
@@ -282,7 +276,6 @@ function initPanel(){
   genChips.onclick = e => { const g=+e.target.dataset.g; if(!g) return; f.gens.has(g)?f.gens.delete(g):f.gens.add(g); e.target.classList.toggle('on'); refresh(); };
   document.querySelectorAll('[data-clear]').forEach(b=> b.onclick=()=>{ f[b.dataset.clear].clear(); (b.dataset.clear==='types'?typeChips:genChips).querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); refresh(); });
   statSel.onchange = () => { f.stat=+statSel.value; refresh(); };
-  mins.oninput = e => { const i=e.target.dataset.m; if(i!==undefined){ f.mins[i]=+e.target.value||0; refresh(); } };
   ['incLeg','incMyth','incForms','onlyFinal'].forEach(id=> document.getElementById(id).onchange = refresh);
 
   function filtered(){
@@ -299,7 +292,6 @@ function initPanel(){
         if (f.typeMode==='all' && ![...f.types].every(x=>t.includes(x))) return false;
         if (f.typeMode==='mono' && !(t.length===1 && f.types.has(t[0]))) return false;
       } else if (f.typeMode==='mono' && p[3].length!==1) return false;
-      for (let i=0;i<6;i++) if (p[4][i] < f.mins[i]) return false;
       return true;
     });
     r.sort((a,b)=> (f.order==='desc'?-1:1)*(statVal(a,f.stat)-statVal(b,f.stat)) || a[0]-b[0]);
