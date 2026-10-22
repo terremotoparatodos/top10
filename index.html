@@ -2,670 +2,377 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PokéQuiz — Terremoto para Todos</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Top 10 Pokémon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
-:root{--bg:#0a0a0f;--surface:#13131c;--card-bg:#1a1a28;--card-border:#2a2a40;--accent:#f5a623;--accent2:#e040fb;--text:#f0f0f8;--text-muted:#6060a0;--red:#ff4455;--green:#44dd88;--blue:#4488ff;--radius:12px}
+/* ===== CONFIG VISUAL ===== */
+:root{
+  --bg:#141850; --bg2:#1E2468; --slot:#262E80; --slot-hi:#33408F;
+  --gold:#FFD23F; --gold-dk:#C99A00; --ink:#F4F6FF; --muted:#9AA3D9; --line:#3A4499;
+  --display:'Bungee', 'Arial Black', sans-serif; --body:'Rubik', system-ui, sans-serif;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body)}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.hidden{display:none!important}
 
-/* MODE SELECT */
-#mode-screen{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;background:radial-gradient(ellipse at center,#1a1a35 0%,#0a0a0f 70%)}
-#mode-screen h1{font-size:2.6rem;font-weight:800;letter-spacing:-1px;color:var(--accent)}
-#mode-screen p{color:var(--text-muted);font-size:0.95rem}
-.mode-buttons{display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center}
-.mode-btn{padding:1rem 2.8rem;border-radius:var(--radius);border:2px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:1.1rem;font-weight:700;cursor:pointer;transition:all 0.2s}
-.mode-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-2px)}
-.mode-btn.mod{border-color:var(--accent2);color:var(--accent2)}
-.mode-btn.mod:hover{background:#1e0a2a;transform:translateY(-2px)}
+/* ===== PANEL ===== */
+#panel{display:grid;grid-template-columns:minmax(320px,420px) 1fr;min-height:100%}
+.side{background:var(--bg2);padding:20px;border-right:2px solid var(--line);overflow-y:auto;max-height:100vh}
+.side h1{font-family:var(--display);font-size:26px;color:var(--gold);margin-bottom:4px}
+.side .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.group{margin-bottom:18px}
+.group h2{font-size:14px;font-weight:700;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.group h2 small{font-weight:400;color:var(--muted);font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid transparent;background:var(--slot);color:var(--ink);padding:5px 10px;border-radius:999px;font-size:13px;font-weight:500;opacity:.55}
+.chip.on{opacity:1;border-color:var(--ink)}
+.chip.type{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.seg{display:flex;background:var(--slot);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;background:none;border:0;color:var(--muted);padding:7px 4px;border-radius:8px;font-size:13px;font-weight:500}
+.seg button.on{background:var(--gold);color:#1A1A1A}
+.row{display:flex;gap:8px;align-items:center}
+.toggle{display:flex;gap:8px;align-items:center;font-size:14px;padding:4px 0}
+.toggle input{width:18px;height:18px;accent-color:var(--gold)}
+input[type=text],input[type=number],select{background:var(--bg);border:2px solid var(--line);color:var(--ink);padding:8px 10px;border-radius:8px;font:inherit;font-size:14px;width:100%}
+.link{background:none;border:0;color:var(--muted);font-size:12px;text-decoration:underline}
 
-/* APP SHELL — strict column layout */
-#app{display:none;flex-direction:column;height:100vh;overflow:hidden}
+.main{padding:20px 24px;overflow-y:auto;max-height:100vh}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px}
+.btn{background:var(--slot);color:var(--ink);border:2px solid var(--line);padding:9px 14px;border-radius:10px;font-weight:700;font-size:14px}
+.btn.primary{background:var(--gold);color:#1A1A1A;border-color:var(--gold)}
+.btn:hover{border-color:var(--ink)}
+.status{margin-left:auto;font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:50%;background:#777}
+.dot.ok{background:#4CD97B}
+#titleIn{font-size:18px;font-weight:700;margin-bottom:6px}
+.count{color:var(--muted);font-size:13px;margin-bottom:12px}
+.list{display:flex;flex-direction:column;gap:6px}
+.item{display:grid;grid-template-columns:44px 56px 1fr auto auto auto;gap:12px;align-items:center;background:var(--slot);border-radius:12px;padding:6px 12px 6px 6px;border:2px solid transparent}
+.item.out{opacity:.45}
+.item.rev{border-color:var(--gold)}
+.item .pos{font-family:var(--display);font-size:22px;text-align:center;color:var(--gold)}
+.item.out .pos{color:var(--muted);font-size:14px}
+.item img{width:56px;height:56px;object-fit:contain}
+.item .nm{font-weight:700}
+.item .meta{font-size:12px;color:var(--muted);display:flex;gap:4px;margin-top:3px;flex-wrap:wrap}
+.tp{font-size:11px;padding:1px 7px;border-radius:999px;color:#fff;font-weight:500}
+.item .val{font-family:var(--display);font-size:22px;min-width:56px;text-align:right}
+.tie{font-size:11px;color:var(--gold);font-weight:700}
+.sm{padding:6px 10px;font-size:13px}
+.empty{color:var(--muted);padding:40px 0;text-align:center}
 
-/* Camera — fixed 46vh */
-#camera-area{flex:0 0 46vh;min-height:0;background:#0c0c18;border-bottom:1px solid var(--card-border);position:relative;display:flex;align-items:center;justify-content:center}
-.camera-label{position:absolute;top:10px;left:14px;font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px}
-.camera-hint{color:#2a2a50;font-size:0.8rem;border:1.5px dashed #2a2a50;padding:0.5rem 1.2rem;border-radius:8px;pointer-events:none;user-select:none}
+/* ===== TV ===== */
+#tv{height:100vh;width:100vw;display:flex;flex-direction:column;padding:3.5vh 4vw;gap:3vh;overflow:hidden;
+  background:radial-gradient(ellipse at 50% -10%, #2B3399 0%, var(--bg) 60%)}
+.tv-head{text-align:center}
+.tv-head .k{font-family:var(--display);color:var(--gold);font-size:7vh;line-height:1;text-shadow:0 .6vh 0 var(--gold-dk)}
+.tv-head .t{font-size:3.6vh;font-weight:900;margin-top:1.2vh}
+.tv-head .s{display:flex;justify-content:center;gap:1vh;margin-top:1.2vh;flex-wrap:wrap}
+.tv-head .s span{font-size:2.2vh;padding:.4vh 1.6vh;border-radius:999px;background:var(--slot);font-weight:700}
+.board{flex:1;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(5,1fr);grid-auto-flow:column;gap:1.6vh 2.5vw;min-height:0}
+.slot{perspective:1200px;min-height:0}
+.card{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,1.4,.5,1)}
+.slot.open .card{transform:rotateX(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:1.6vh;display:flex;align-items:center;overflow:hidden}
+.front{background:var(--slot);border:.35vh solid var(--line)}
+.front .n{font-family:var(--display);font-size:6vh;width:11vh;text-align:center;color:var(--gold)}
+.front .bars{flex:1;height:30%;margin-right:3vh;border-radius:1vh;background:repeating-linear-gradient(90deg,var(--slot-hi) 0 2vh,transparent 2vh 3vh)}
+.back{background:linear-gradient(90deg,var(--gold) 0 11vh,var(--slot-hi) 11vh);transform:rotateX(180deg);border:.35vh solid var(--gold)}
+.back .n{font-family:var(--display);font-size:6vh;width:11vh;text-align:center;color:#1A1A1A}
+.back img{height:100%;aspect-ratio:1;object-fit:contain;padding:.6vh;filter:drop-shadow(0 .5vh .4vh rgba(0,0,0,.4))}
+.back .info{flex:1;min-width:0;padding-left:1vh}
+.back .nm{font-size:3.6vh;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back .tps{display:flex;gap:.6vh;margin-top:.5vh}
+.back .tps .tp{font-size:1.7vh;padding:.2vh 1.2vh}
+.back .v{font-family:var(--display);font-size:5.4vh;padding:0 3vh;color:var(--gold)}
+.tv-foot{position:fixed;bottom:1.2vh;right:1.6vw;font-size:1.6vh;color:var(--muted);opacity:.6}
 
-/* Consigna bar — fixed height */
-#consigna-bar{flex:0 0 36px;min-height:0;background:var(--surface);border-bottom:1px solid var(--card-border);padding:0 1.2rem;display:flex;align-items:center;gap:0.8rem}
-.clabel{color:var(--text-muted);font-size:0.68rem;text-transform:uppercase;letter-spacing:1.5px;flex-shrink:0}
-#consigna-display{color:var(--accent);font-weight:600;font-size:0.88rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.consigna-hidden-badge{background:#1a0a30;border:1px solid #3a1a60;color:#9055cc;font-size:0.72rem;padding:1px 8px;border-radius:5px;font-weight:600}
-#consigna-stat{color:var(--text-muted);font-size:0.72rem;flex-shrink:0}
-.timer-display{flex-shrink:0;font-size:0.95rem;font-weight:800;font-variant-numeric:tabular-nums;min-width:42px;text-align:right}
-.timer-display.running{color:var(--green)}.timer-display.warning{color:var(--accent)}.timer-display.danger{color:var(--red)}.timer-display.stopped{color:var(--text-muted)}
-
-/* Cards section — takes remaining space */
-#cards-section{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:6px 8px;background:var(--bg);overflow:hidden}
-.cards-row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;flex:1;min-height:0}
-
-/* Card — height driven by JS, no aspect-ratio */
-.poke-card{border-radius:var(--radius);background:var(--card-bg);border:1.5px solid var(--card-border);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;transition:border-color 0.25s;width:100%}
-.poke-card.hidden-card{background:linear-gradient(135deg,#14142a 0%,#0f1e3a 50%,#0f3060 100%)}
-.poke-card.revealed{border-color:var(--accent);background:linear-gradient(135deg,#1a1508 0%,#2a2010 100%)}
-.poke-card.just-revealed{animation:flipIn 0.35s ease-out}
-@keyframes flipIn{0%{transform:rotateY(90deg) scale(0.85);opacity:0}100%{transform:rotateY(0) scale(1);opacity:1}}
-
-/* Hidden face */
-.card-rank{font-size:1.8rem;font-weight:900;color:#22335a;line-height:1}
-.card-pokeball{width:34px;height:34px;border-radius:50%;border:3px solid #22335a;position:relative;margin-top:6px}
-.card-pokeball::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:#22335a;transform:translateY(-50%)}
-.card-pokeball::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#22335a;border:2px solid #14213a}
-
-/* Revealed face */
-.card-sprite{image-rendering:pixelated;display:block;flex-shrink:0}
-.card-name{font-size:0.65rem;font-weight:700;text-align:center;padding:0 4px;color:var(--accent);text-transform:capitalize;line-height:1.2;margin-top:2px}
-.card-val{font-size:0.58rem;color:var(--text-muted);text-align:center;margin-top:1px}
-.card-pos{position:absolute;top:4px;left:6px;font-size:0.58rem;font-weight:800;color:var(--text-muted)}
-.card-types{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:2px}
-.type-badge{font-size:0.5rem;padding:1px 3px;border-radius:3px;font-weight:700;text-transform:uppercase}
-
-/* Mod btn on card */
-.mod-card-btn{position:absolute;bottom:4px;right:4px;padding:2px 6px;border-radius:4px;border:1px solid var(--card-border);background:rgba(0,0,0,0.75);color:var(--text);font-size:0.55rem;cursor:pointer;font-weight:700;transition:all 0.15s;z-index:2}
-.mod-card-btn:hover{background:var(--accent);color:#000;border-color:var(--accent)}
-.mod-card-btn.done{background:#1a3a1a;border-color:#2a5a2a;color:#44dd88;cursor:default;pointer-events:none}
-
-/* Mod sees hidden cards dimmed but visible */
-.poke-card.mod-hidden{border-color:#1e2a3a;background:linear-gradient(135deg,#0e1520 0%,#0a1830 100%)}
-.poke-card.mod-hidden .card-name{color:#7090b0}
-.poke-card.mod-hidden .card-val{color:#445566}
-.poke-card.mod-hidden .card-sprite{opacity:0.45;filter:grayscale(60%)}
-.poke-card.mod-hidden .card-pos{color:#445566}
-.poke-card.mod-hidden .type-badge{opacity:0.4}
-
-/* Mod panel */
-#mod-panel{flex:0 0 auto;background:var(--surface);border-top:1px solid var(--card-border);padding:5px 10px;display:none;flex-direction:column;gap:4px}
-#mod-panel.visible{display:flex}
-.mod-row{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
-.mod-label{color:var(--text-muted);font-size:0.68rem;flex-shrink:0;min-width:52px}
-#mod-panel input[type=text]{padding:3px 7px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.78rem;width:124px}
-#mod-panel input[type=number]{padding:3px 6px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.78rem;width:52px}
-.btn-sm{padding:3px 8px;border-radius:5px;border:1px solid var(--card-border);background:var(--card-bg);color:var(--text);font-size:0.72rem;cursor:pointer;font-weight:600;transition:all 0.15s;white-space:nowrap}
-.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
-.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
-.btn-sm.primary{background:var(--accent);color:#000;border-color:var(--accent)}
-.btn-sm.primary:hover{background:#ffc040}
-.btn-sm.active{background:#1a3060;border-color:var(--blue);color:var(--blue)}
-
-/* Scoreboard */
-.scoreboard{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
-.score-pill{display:flex;align-items:center;gap:3px;background:var(--card-bg);border:1px solid var(--card-border);border-radius:20px;padding:2px 7px;font-size:0.72rem}
-.score-name{font-weight:600;color:var(--text)}.score-pts{color:var(--accent);font-weight:700}
-.score-del{color:var(--red);cursor:pointer;font-size:0.65rem;margin-left:1px;opacity:0.6}.score-del:hover{opacity:1}
-
-/* Status bar */
-#status-bar{flex:0 0 22px;background:var(--surface);border-top:1px solid var(--card-border);padding:0 10px;display:flex;align-items:center;gap:6px;font-size:0.68rem;color:var(--text-muted)}
-.status-dot{width:6px;height:6px;border-radius:50%;background:var(--text-muted);flex-shrink:0}
-.status-dot.live{background:var(--green);box-shadow:0 0 5px var(--green);animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-
-/* Loading */
-#loading{position:fixed;inset:0;background:rgba(10,10,15,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;z-index:200;backdrop-filter:blur(4px)}
-#loading.hidden{display:none}
-.spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--card-border);border-top-color:var(--accent);animation:spin 0.7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-#loading p{color:var(--text-muted);font-size:0.83rem}
-
-/* Toast */
-#toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:#222;border:1px solid #444;border-radius:8px;padding:5px 14px;font-size:0.82rem;color:var(--text);z-index:300;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap}
-#toast.show{opacity:1}
-
-/* Consigna modal */
-#cmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:150;align-items:center;justify-content:center}
-#cmodal-inner{background:var(--surface);border:1px solid var(--card-border);border-radius:14px;padding:1.2rem;max-width:460px;width:90vw;max-height:75vh;overflow-y:auto}
-#cmodal-inner h3{color:var(--accent);margin-bottom:0.8rem;font-size:0.95rem}
-#clist{display:flex;flex-direction:column;gap:3px}
-
-/* Type colors */
-.t-fire{background:#9d2200;color:#ffa070}.t-water{background:#00487a;color:#88ccff}.t-grass{background:#1a4d00;color:#88ee66}.t-electric{background:#5a4a00;color:#ffe066}.t-psychic{background:#7a0040;color:#ff88cc}.t-ice{background:#00405a;color:#88eeff}.t-dragon{background:#2a0080;color:#9988ff}.t-dark{background:#1a1a1a;color:#aaaaaa}.t-fairy{background:#6a0050;color:#ffaadd}.t-fighting{background:#5a1a00;color:#ff9966}.t-flying{background:#2a3a6a;color:#aabbff}.t-poison{background:#3a0060;color:#cc88ff}.t-ground{background:#4a3000;color:#ddaa66}.t-rock{background:#3a3020;color:#bbaa88}.t-bug{background:#1a4000;color:#88cc44}.t-ghost{background:#220040;color:#9966cc}.t-steel{background:#2a3a4a;color:#aabbcc}.t-normal{background:#2a2a2a;color:#aaaaaa}
+@media (max-width:820px){#panel{grid-template-columns:1fr}.side,.main{max-height:none}.item{grid-template-columns:34px 44px 1fr auto;}.item .x{display:none}}
+@media (prefers-reduced-motion:reduce){.card{transition:none}}
 </style>
 </head>
 <body>
 
-<div id="loading"><div class="spinner"></div><p id="loading-text">Conectando...</p></div>
-<div id="toast"></div>
+<!-- ================= PANEL ================= -->
+<div id="panel" class="hidden">
+  <aside class="side">
+    <h1>Top 10</h1>
+    <p class="sub">Filtrá, armá el top y revelalo en la TV.</p>
 
-<!-- MODE SELECT -->
-<div id="mode-screen" style="display:none">
-  <div style="text-align:center"><h1>⚡ PokéQuiz</h1><p style="margin-top:0.3rem">Terremoto para Todos</p></div>
-  <div class="mode-buttons">
-    <button class="mode-btn" onclick="selectMode('spectator')">👁️ Espectador</button>
-    <button class="mode-btn mod" onclick="selectMode('mod')">🎮 Mod / Host</button>
-  </div>
+    <div class="group">
+      <h2>Tipos <button class="link" data-clear="types">Limpiar</button></h2>
+      <div class="chips" id="typeChips"></div>
+      <div class="seg" id="typeMode" style="margin-top:8px">
+        <button data-v="any">Tiene alguno</button><button data-v="all">Tiene todos</button><button data-v="mono">Solo monotipo</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Generación <button class="link" data-clear="gens">Limpiar</button></h2>
+      <div class="chips" id="genChips"></div>
+    </div>
+
+    <div class="group">
+      <h2>Ordenar por</h2>
+      <select id="statSel"></select>
+      <div class="seg" id="orderSeg" style="margin-top:8px">
+        <button data-v="desc">Mayor primero</button><button data-v="asc">Menor primero</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h2>Mínimos de stats <small>opcional</small></h2>
+      <div id="mins" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px"></div>
+    </div>
+
+    <div class="group">
+      <h2>Incluir</h2>
+      <label class="toggle"><input type="checkbox" id="incLeg" checked> Legendarios</label>
+      <label class="toggle"><input type="checkbox" id="incMyth" checked> Singulares (míticos)</label>
+      <label class="toggle"><input type="checkbox" id="incForms"> Megas, formas regionales y otras</label>
+      <label class="toggle"><input type="checkbox" id="onlyFinal"> Solo sin evolución posterior</label>
+    </div>
+
+    <div class="group">
+      <h2>Sala de sincronización</h2>
+      <div class="row"><input type="text" id="roomIn" maxlength="24"><button class="btn sm" id="roomBtn">Usar</button></div>
+      <p class="sub" style="margin:6px 0 0">La TV tiene que abrir la misma sala.</p>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="bar">
+      <button class="btn primary" id="buildBtn">Armar Top 10 con este filtro</button>
+      <button class="btn" id="revealNext">Revelar siguiente</button>
+      <button class="btn" id="revealAll">Revelar todo</button>
+      <button class="btn" id="hideAll">Ocultar todo</button>
+      <button class="btn" id="openTv">Abrir vista TV</button>
+      <span class="status"><span class="dot" id="dot"></span><span id="statusTx">Sin conexión</span></span>
+    </div>
+    <input type="text" id="titleIn" placeholder="Título que se ve en la TV">
+    <div class="row" style="margin-bottom:10px"><select id="revealOrder" style="max-width:260px"><option value="bottom">Revelar siguiente: del 10 al 1</option><option value="top">Revelar siguiente: del 1 al 10</option></select></div>
+    <p class="count" id="count"></p>
+    <div class="list" id="list"></div>
+  </main>
 </div>
 
-<!-- CONSIGNA MODAL -->
-<div id="cmodal">
-  <div id="cmodal-inner">
-    <h3>Elegir consigna</h3>
-    <div id="clist"></div>
-    <div style="margin-top:0.7rem"><button class="btn-sm danger" onclick="closeModal()">Cancelar</button></div>
+<!-- ================= TV ================= -->
+<div id="tv" class="hidden">
+  <div class="tv-head">
+    <div class="k">TOP 10</div>
+    <div class="t" id="tvTitle"></div>
+    <div class="s" id="tvTags"></div>
   </div>
-</div>
-
-<!-- MAIN APP -->
-<div id="app">
-  <div id="camera-area">
-    <span class="camera-label">Stream</span>
-    <div class="camera-hint">← Espacio para cámaras OBS →</div>
-  </div>
-
-  <div id="consigna-bar">
-    <span class="clabel">Consigna</span>
-    <span id="consigna-display">—</span>
-    <div class="timer-display stopped" id="timer-display">—</div>
-    <span id="consigna-stat"></span>
-  </div>
-
-  <div id="cards-section">
-    <div class="cards-row" id="row1"></div>
-    <div class="cards-row" id="row2"></div>
-  </div>
-
-  <div id="mod-panel">
-    <div class="mod-row">
-      <span class="mod-label">Ronda</span>
-      <button class="btn-sm primary" onclick="generateNewGame()">🎲 Nueva ronda</button>
-      <button class="btn-sm" onclick="showConsignaMenu()">📋 Consigna</button>
-      <button class="btn-sm" id="btn-consigna" onclick="toggleConsigna()">👁 Revelar consigna</button>
-      <button class="btn-sm" id="btn-timer" onclick="toggleTimer()">⏱ Timer</button>
-      <input type="number" id="timer-min" value="2" min="1" max="10" title="Minutos">
-      <span style="font-size:0.65rem;color:var(--text-muted)">min</span>
-      <button class="btn-sm danger" onclick="resetAll()">↺ Reset</button>
-    </div>
-    <div class="mod-row">
-      <span class="mod-label">Puntos</span>
-      <input type="text" id="pname" placeholder="Nombre jugador">
-      <input type="number" id="ppts" value="1" min="1" max="10">
-      <button class="btn-sm primary" onclick="addPoints()">+ Dar puntos</button>
-      <div class="scoreboard" id="scoreboard"></div>
-    </div>
-  </div>
-
-  <div id="status-bar">
-    <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">Conectando...</span>
-    <span style="margin-left:auto">PokéQuiz · Terremoto para Todos</span>
-  </div>
+  <div class="board" id="board"></div>
+  <div class="tv-foot" id="tvFoot"></div>
 </div>
 
 <script>
-const SB_URL = 'https://qsufableozmyugcrhcai.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzdWZhYmxlb3pteXVnY3JoY2FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1MjM4MDIsImV4cCI6MjEwMzA5OTgwMn0.F_H7QSVtakgt6iYfYvtKM7moBzB_8ftjdj0jk-FWX_8';
-const CHANNEL = 'pokequiz-terremoto';
+/* =========================================================
+   CONFIG — editá esto
+   ========================================================= */
+const SUPABASE_URL = 'https://qsufableozmyugcrhcai.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_yJNob5Wpv05GLnNhVPU6bQ_8zaH5TP2'; // vacío = solo sincroniza en el mismo navegador
+const TOP_N = 10;
+const SPRITE = id => `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 
-let mode=null, sbClient=null, channel=null;
+const TYPES = [ // id 1..18
+  ['Normal','#9FA19F'],['Lucha','#FF8000'],['Volador','#81B9EF'],['Veneno','#9141CB'],['Tierra','#915121'],['Roca','#AFA981'],
+  ['Bicho','#91A119'],['Fantasma','#704170'],['Acero','#60A1B8'],['Fuego','#E62829'],['Agua','#2980EF'],['Planta','#3FA129'],
+  ['Eléctrico','#E0B000'],['Psíquico','#EF4179'],['Hielo','#3DCEF3'],['Dragón','#5060E1'],['Siniestro','#624D4E'],['Hada','#EF70EF']];
+const STATS = ['PS','Ataque','Defensa','At. Esp.','Def. Esp.','Velocidad','Total'];
 
-const state = {
-  consigna:null, consignaVisible:false,
-  pokemon:[], revealed:{}, scores:{},
-  timerEnd:null, timerRunning:false
-};
+/* Datos: [id, nombre, gen, [tipos], [ps,atk,def,spa,spd,spe], 0 normal/1 legendario/2 singular, 0 base/1 forma, tieneEvolucion] */
+const DEX = [[1,"Bulbasaur",1,[12,4],[45,49,49,65,65,45],0,0,1],[2,"Ivysaur",1,[12,4],[60,62,63,80,80,60],0,0,1],[3,"Venusaur",1,[12,4],[80,82,83,100,100,80],0,0,0],[4,"Charmander",1,[10],[39,52,43,60,50,65],0,0,1],[5,"Charmeleon",1,[10],[58,64,58,80,65,80],0,0,1],[6,"Charizard",1,[10,3],[78,84,78,109,85,100],0,0,0],[7,"Squirtle",1,[11],[44,48,65,50,64,43],0,0,1],[8,"Wartortle",1,[11],[59,63,80,65,80,58],0,0,1],[9,"Blastoise",1,[11],[79,83,100,85,105,78],0,0,0],[10,"Caterpie",1,[7],[45,30,35,20,20,45],0,0,1],[11,"Metapod",1,[7],[50,20,55,25,25,30],0,0,1],[12,"Butterfree",1,[7,3],[60,45,50,90,80,70],0,0,0],[13,"Weedle",1,[7,4],[40,35,30,20,20,50],0,0,1],[14,"Kakuna",1,[7,4],[45,25,50,25,25,35],0,0,1],[15,"Beedrill",1,[7,4],[65,90,40,45,80,75],0,0,0],[16,"Pidgey",1,[1,3],[40,45,40,35,35,56],0,0,1],[17,"Pidgeotto",1,[1,3],[63,60,55,50,50,71],0,0,1],[18,"Pidgeot",1,[1,3],[83,80,75,70,70,101],0,0,0],[19,"Rattata",1,[1],[30,56,35,25,35,72],0,0,1],[20,"Raticate",1,[1],[55,81,60,50,70,97],0,0,0],[21,"Spearow",1,[1,3],[40,60,30,31,31,70],0,0,1],[22,"Fearow",1,[1,3],[65,90,65,61,61,100],0,0,0],[23,"Ekans",1,[4],[35,60,44,40,54,55],0,0,1],[24,"Arbok",1,[4],[60,95,69,65,79,80],0,0,0],[25,"Pikachu",1,[13],[35,55,40,50,50,90],0,0,1],[26,"Raichu",1,[13],[60,90,55,90,80,110],0,0,0],[27,"Sandshrew",1,[5],[50,75,85,20,30,40],0,0,1],[28,"Sandslash",1,[5],[75,100,110,45,55,65],0,0,0],[29,"Nidoran♀",1,[4],[55,47,52,40,40,41],0,0,1],[30,"Nidorina",1,[4],[70,62,67,55,55,56],0,0,1],[31,"Nidoqueen",1,[4,5],[90,92,87,75,85,76],0,0,0],[32,"Nidoran♂",1,[4],[46,57,40,40,40,50],0,0,1],[33,"Nidorino",1,[4],[61,72,57,55,55,65],0,0,1],[34,"Nidoking",1,[4,5],[81,102,77,85,75,85],0,0,0],[35,"Clefairy",1,[18],[70,45,48,60,65,35],0,0,1],[36,"Clefable",1,[18],[95,70,73,95,90,60],0,0,0],[37,"Vulpix",1,[10],[38,41,40,50,65,65],0,0,1],[38,"Ninetales",1,[10],[73,76,75,81,100,100],0,0,0],[39,"Jigglypuff",1,[1,18],[115,45,20,45,25,20],0,0,1],[40,"Wigglytuff",1,[1,18],[140,70,45,85,50,45],0,0,0],[41,"Zubat",1,[4,3],[40,45,35,30,40,55],0,0,1],[42,"Golbat",1,[4,3],[75,80,70,65,75,90],0,0,1],[43,"Oddish",1,[12,4],[45,50,55,75,65,30],0,0,1],[44,"Gloom",1,[12,4],[60,65,70,85,75,40],0,0,1],[45,"Vileplume",1,[12,4],[75,80,85,110,90,50],0,0,0],[46,"Paras",1,[7,12],[35,70,55,45,55,25],0,0,1],[47,"Parasect",1,[7,12],[60,95,80,60,80,30],0,0,0],[48,"Venonat",1,[7,4],[60,55,50,40,55,45],0,0,1],[49,"Venomoth",1,[7,4],[70,65,60,90,75,90],0,0,0],[50,"Diglett",1,[5],[10,55,25,35,45,95],0,0,1],[51,"Dugtrio",1,[5],[35,100,50,50,70,120],0,0,0],[52,"Meowth",1,[1],[40,45,35,40,40,90],0,0,1],[53,"Persian",1,[1],[65,70,60,65,65,115],0,0,0],[54,"Psyduck",1,[11],[50,52,48,65,50,55],0,0,1],[55,"Golduck",1,[11],[80,82,78,95,80,85],0,0,0],[56,"Mankey",1,[2],[40,80,35,35,45,70],0,0,1],[57,"Primeape",1,[2],[65,105,60,60,70,95],0,0,1],[58,"Growlithe",1,[10],[55,70,45,70,50,60],0,0,1],[59,"Arcanine",1,[10],[90,110,80,100,80,95],0,0,0],[60,"Poliwag",1,[11],[40,50,40,40,40,90],0,0,1],[61,"Poliwhirl",1,[11],[65,65,65,50,50,90],0,0,1],[62,"Poliwrath",1,[11,2],[90,95,95,70,90,70],0,0,0],[63,"Abra",1,[14],[25,20,15,105,55,90],0,0,1],[64,"Kadabra",1,[14],[40,35,30,120,70,105],0,0,1],[65,"Alakazam",1,[14],[55,50,45,135,95,120],0,0,0],[66,"Machop",1,[2],[70,80,50,35,35,35],0,0,1],[67,"Machoke",1,[2],[80,100,70,50,60,45],0,0,1],[68,"Machamp",1,[2],[90,130,80,65,85,55],0,0,0],[69,"Bellsprout",1,[12,4],[50,75,35,70,30,40],0,0,1],[70,"Weepinbell",1,[12,4],[65,90,50,85,45,55],0,0,1],[71,"Victreebel",1,[12,4],[80,105,65,100,70,70],0,0,0],[72,"Tentacool",1,[11,4],[40,40,35,50,100,70],0,0,1],[73,"Tentacruel",1,[11,4],[80,70,65,80,120,100],0,0,0],[74,"Geodude",1,[6,5],[40,80,100,30,30,20],0,0,1],[75,"Graveler",1,[6,5],[55,95,115,45,45,35],0,0,1],[76,"Golem",1,[6,5],[80,120,130,55,65,45],0,0,0],[77,"Ponyta",1,[10],[50,85,55,65,65,90],0,0,1],[78,"Rapidash",1,[10],[65,100,70,80,80,105],0,0,0],[79,"Slowpoke",1,[11,14],[90,65,65,40,40,15],0,0,1],[80,"Slowbro",1,[11,14],[95,75,110,100,80,30],0,0,0],[81,"Magnemite",1,[13,9],[25,35,70,95,55,45],0,0,1],[82,"Magneton",1,[13,9],[50,60,95,120,70,70],0,0,1],[83,"Farfetch’d",1,[1,3],[52,90,55,58,62,60],0,0,1],[84,"Doduo",1,[1,3],[35,85,45,35,35,75],0,0,1],[85,"Dodrio",1,[1,3],[60,110,70,60,60,110],0,0,0],[86,"Seel",1,[11],[65,45,55,45,70,45],0,0,1],[87,"Dewgong",1,[11,15],[90,70,80,70,95,70],0,0,0],[88,"Grimer",1,[4],[80,80,50,40,50,25],0,0,1],[89,"Muk",1,[4],[105,105,75,65,100,50],0,0,0],[90,"Shellder",1,[11],[30,65,100,45,25,40],0,0,1],[91,"Cloyster",1,[11,15],[50,95,180,85,45,70],0,0,0],[92,"Gastly",1,[8,4],[30,35,30,100,35,80],0,0,1],[93,"Haunter",1,[8,4],[45,50,45,115,55,95],0,0,1],[94,"Gengar",1,[8,4],[60,65,60,130,75,110],0,0,0],[95,"Onix",1,[6,5],[35,45,160,30,45,70],0,0,1],[96,"Drowzee",1,[14],[60,48,45,43,90,42],0,0,1],[97,"Hypno",1,[14],[85,73,70,73,115,67],0,0,0],[98,"Krabby",1,[11],[30,105,90,25,25,50],0,0,1],[99,"Kingler",1,[11],[55,130,115,50,50,75],0,0,0],[100,"Voltorb",1,[13],[40,30,50,55,55,100],0,0,1],[101,"Electrode",1,[13],[60,50,70,80,80,150],0,0,0],[102,"Exeggcute",1,[12,14],[60,40,80,60,45,40],0,0,1],[103,"Exeggutor",1,[12,14],[95,95,85,125,75,55],0,0,0],[104,"Cubone",1,[5],[50,50,95,40,50,35],0,0,1],[105,"Marowak",1,[5],[60,80,110,50,80,45],0,0,0],[106,"Hitmonlee",1,[2],[50,120,53,35,110,87],0,0,0],[107,"Hitmonchan",1,[2],[50,105,79,35,110,76],0,0,0],[108,"Lickitung",1,[1],[90,55,75,60,75,30],0,0,1],[109,"Koffing",1,[4],[40,65,95,60,45,35],0,0,1],[110,"Weezing",1,[4],[65,90,120,85,70,60],0,0,0],[111,"Rhyhorn",1,[5,6],[80,85,95,30,30,25],0,0,1],[112,"Rhydon",1,[5,6],[105,130,120,45,45,40],0,0,1],[113,"Chansey",1,[1],[250,5,5,35,105,50],0,0,1],[114,"Tangela",1,[12],[65,55,115,100,40,60],0,0,1],[115,"Kangaskhan",1,[1],[105,95,80,40,80,90],0,0,0],[116,"Horsea",1,[11],[30,40,70,70,25,60],0,0,1],[117,"Seadra",1,[11],[55,65,95,95,45,85],0,0,1],[118,"Goldeen",1,[11],[45,67,60,35,50,63],0,0,1],[119,"Seaking",1,[11],[80,92,65,65,80,68],0,0,0],[120,"Staryu",1,[11],[30,45,55,70,55,85],0,0,1],[121,"Starmie",1,[11,14],[60,75,85,100,85,115],0,0,0],[122,"Mr. Mime",1,[14,18],[40,45,65,100,120,90],0,0,1],[123,"Scyther",1,[7,3],[70,110,80,55,80,105],0,0,1],[124,"Jynx",1,[15,14],[65,50,35,115,95,95],0,0,0],[125,"Electabuzz",1,[13],[65,83,57,95,85,105],0,0,1],[126,"Magmar",1,[10],[65,95,57,100,85,93],0,0,1],[127,"Pinsir",1,[7],[65,125,100,55,70,85],0,0,0],[128,"Tauros",1,[1],[75,100,95,40,70,110],0,0,0],[129,"Magikarp",1,[11],[20,10,55,15,20,80],0,0,1],[130,"Gyarados",1,[11,3],[95,125,79,60,100,81],0,0,0],[131,"Lapras",1,[11,15],[130,85,80,85,95,60],0,0,0],[132,"Ditto",1,[1],[48,48,48,48,48,48],0,0,0],[133,"Eevee",1,[1],[55,55,50,45,65,55],0,0,1],[134,"Vaporeon",1,[11],[130,65,60,110,95,65],0,0,0],[135,"Jolteon",1,[13],[65,65,60,110,95,130],0,0,0],[136,"Flareon",1,[10],[65,130,60,95,110,65],0,0,0],[137,"Porygon",1,[1],[65,60,70,85,75,40],0,0,1],[138,"Omanyte",1,[6,11],[35,40,100,90,55,35],0,0,1],[139,"Omastar",1,[6,11],[70,60,125,115,70,55],0,0,0],[140,"Kabuto",1,[6,11],[30,80,90,55,45,55],0,0,1],[141,"Kabutops",1,[6,11],[60,115,105,65,70,80],0,0,0],[142,"Aerodactyl",1,[6,3],[80,105,65,60,75,130],0,0,0],[143,"Snorlax",1,[1],[160,110,65,65,110,30],0,0,0],[144,"Articuno",1,[15,3],[90,85,100,95,125,85],1,0,0],[145,"Zapdos",1,[13,3],[90,90,85,125,90,100],1,0,0],[146,"Moltres",1,[10,3],[90,100,90,125,85,90],1,0,0],[147,"Dratini",1,[16],[41,64,45,50,50,50],0,0,1],[148,"Dragonair",1,[16],[61,84,65,70,70,70],0,0,1],[149,"Dragonite",1,[16,3],[91,134,95,100,100,80],0,0,0],[150,"Mewtwo",1,[14],[106,110,90,154,90,130],1,0,0],[151,"Mew",1,[14],[100,100,100,100,100,100],2,0,0],[152,"Chikorita",2,[12],[45,49,65,49,65,45],0,0,1],[153,"Bayleef",2,[12],[60,62,80,63,80,60],0,0,1],[154,"Meganium",2,[12],[80,82,100,83,100,80],0,0,0],[155,"Cyndaquil",2,[10],[39,52,43,60,50,65],0,0,1],[156,"Quilava",2,[10],[58,64,58,80,65,80],0,0,1],[157,"Typhlosion",2,[10],[78,84,78,109,85,100],0,0,0],[158,"Totodile",2,[11],[50,65,64,44,48,43],0,0,1],[159,"Croconaw",2,[11],[65,80,80,59,63,58],0,0,1],[160,"Feraligatr",2,[11],[85,105,100,79,83,78],0,0,0],[161,"Sentret",2,[1],[35,46,34,35,45,20],0,0,1],[162,"Furret",2,[1],[85,76,64,45,55,90],0,0,0],[163,"Hoothoot",2,[1,3],[60,30,30,36,56,50],0,0,1],[164,"Noctowl",2,[1,3],[100,50,50,86,96,70],0,0,0],[165,"Ledyba",2,[7,3],[40,20,30,40,80,55],0,0,1],[166,"Ledian",2,[7,3],[55,35,50,55,110,85],0,0,0],[167,"Spinarak",2,[7,4],[40,60,40,40,40,30],0,0,1],[168,"Ariados",2,[7,4],[70,90,70,60,70,40],0,0,0],[169,"Crobat",2,[4,3],[85,90,80,70,80,130],0,0,0],[170,"Chinchou",2,[11,13],[75,38,38,56,56,67],0,0,1],[171,"Lanturn",2,[11,13],[125,58,58,76,76,67],0,0,0],[172,"Pichu",2,[13],[20,40,15,35,35,60],0,0,1],[173,"Cleffa",2,[18],[50,25,28,45,55,15],0,0,1],[174,"Igglybuff",2,[1,18],[90,30,15,40,20,15],0,0,1],[175,"Togepi",2,[18],[35,20,65,40,65,20],0,0,1],[176,"Togetic",2,[18,3],[55,40,85,80,105,40],0,0,1],[177,"Natu",2,[14,3],[40,50,45,70,45,70],0,0,1],[178,"Xatu",2,[14,3],[65,75,70,95,70,95],0,0,0],[179,"Mareep",2,[13],[55,40,40,65,45,35],0,0,1],[180,"Flaaffy",2,[13],[70,55,55,80,60,45],0,0,1],[181,"Ampharos",2,[13],[90,75,85,115,90,55],0,0,0],[182,"Bellossom",2,[12],[75,80,95,90,100,50],0,0,0],[183,"Marill",2,[11,18],[70,20,50,20,50,40],0,0,1],[184,"Azumarill",2,[11,18],[100,50,80,60,80,50],0,0,0],[185,"Sudowoodo",2,[6],[70,100,115,30,65,30],0,0,0],[186,"Politoed",2,[11],[90,75,75,90,100,70],0,0,0],[187,"Hoppip",2,[12,3],[35,35,40,35,55,50],0,0,1],[188,"Skiploom",2,[12,3],[55,45,50,45,65,80],0,0,1],[189,"Jumpluff",2,[12,3],[75,55,70,55,95,110],0,0,0],[190,"Aipom",2,[1],[55,70,55,40,55,85],0,0,1],[191,"Sunkern",2,[12],[30,30,30,30,30,30],0,0,1],[192,"Sunflora",2,[12],[75,75,55,105,85,30],0,0,0],[193,"Yanma",2,[7,3],[65,65,45,75,45,95],0,0,1],[194,"Wooper",2,[11,5],[55,45,45,25,25,15],0,0,1],[195,"Quagsire",2,[11,5],[95,85,85,65,65,35],0,0,0],[196,"Espeon",2,[14],[65,65,60,130,95,110],0,0,0],[197,"Umbreon",2,[17],[95,65,110,60,130,65],0,0,0],[198,"Murkrow",2,[17,3],[60,85,42,85,42,91],0,0,1],[199,"Slowking",2,[11,14],[95,75,80,100,110,30],0,0,0],[200,"Misdreavus",2,[8],[60,60,60,85,85,85],0,0,1],[201,"Unown",2,[14],[48,72,48,72,48,48],0,0,0],[202,"Wobbuffet",2,[14],[190,33,58,33,58,33],0,0,0],[203,"Girafarig",2,[1,14],[70,80,65,90,65,85],0,0,1],[204,"Pineco",2,[7],[50,65,90,35,35,15],0,0,1],[205,"Forretress",2,[7,9],[75,90,140,60,60,40],0,0,0],[206,"Dunsparce",2,[1],[100,70,70,65,65,45],0,0,1],[207,"Gligar",2,[5,3],[65,75,105,35,65,85],0,0,1],[208,"Steelix",2,[9,5],[75,85,200,55,65,30],0,0,0],[209,"Snubbull",2,[18],[60,80,50,40,40,30],0,0,1],[210,"Granbull",2,[18],[90,120,75,60,60,45],0,0,0],[211,"Qwilfish",2,[11,4],[65,95,85,55,55,85],0,0,1],[212,"Scizor",2,[7,9],[70,130,100,55,80,65],0,0,0],[213,"Shuckle",2,[7,6],[20,10,230,10,230,5],0,0,0],[214,"Heracross",2,[7,2],[80,125,75,40,95,85],0,0,0],[215,"Sneasel",2,[17,15],[55,95,55,35,75,115],0,0,1],[216,"Teddiursa",2,[1],[60,80,50,50,50,40],0,0,1],[217,"Ursaring",2,[1],[90,130,75,75,75,55],0,0,1],[218,"Slugma",2,[10],[40,40,40,70,40,20],0,0,1],[219,"Magcargo",2,[10,6],[60,50,120,90,80,30],0,0,0],[220,"Swinub",2,[15,5],[50,50,40,30,30,50],0,0,1],[221,"Piloswine",2,[15,5],[100,100,80,60,60,50],0,0,1],[222,"Corsola",2,[11,6],[65,55,95,65,95,35],0,0,1],[223,"Remoraid",2,[11],[35,65,35,65,35,65],0,0,1],[224,"Octillery",2,[11],[75,105,75,105,75,45],0,0,0],[225,"Delibird",2,[15,3],[45,55,45,65,45,75],0,0,0],[226,"Mantine",2,[11,3],[85,40,70,80,140,70],0,0,0],[227,"Skarmory",2,[9,3],[65,80,140,40,70,70],0,0,0],[228,"Houndour",2,[17,10],[45,60,30,80,50,65],0,0,1],[229,"Houndoom",2,[17,10],[75,90,50,110,80,95],0,0,0],[230,"Kingdra",2,[11,16],[75,95,95,95,95,85],0,0,0],[231,"Phanpy",2,[5],[90,60,60,40,40,40],0,0,1],[232,"Donphan",2,[5],[90,120,120,60,60,50],0,0,0],[233,"Porygon2",2,[1],[85,80,90,105,95,60],0,0,1],[234,"Stantler",2,[1],[73,95,62,85,65,85],0,0,1],[235,"Smeargle",2,[1],[55,20,35,20,45,75],0,0,0],[236,"Tyrogue",2,[2],[35,35,35,35,35,35],0,0,1],[237,"Hitmontop",2,[2],[50,95,95,35,110,70],0,0,0],[238,"Smoochum",2,[15,14],[45,30,15,85,65,65],0,0,1],[239,"Elekid",2,[13],[45,63,37,65,55,95],0,0,1],[240,"Magby",2,[10],[45,75,37,70,55,83],0,0,1],[241,"Miltank",2,[1],[95,80,105,40,70,100],0,0,0],[242,"Blissey",2,[1],[255,10,10,75,135,55],0,0,0],[243,"Raikou",2,[13],[90,85,75,115,100,115],1,0,0],[244,"Entei",2,[10],[115,115,85,90,75,100],1,0,0],[245,"Suicune",2,[11],[100,75,115,90,115,85],1,0,0],[246,"Larvitar",2,[6,5],[50,64,50,45,50,41],0,0,1],[247,"Pupitar",2,[6,5],[70,84,70,65,70,51],0,0,1],[248,"Tyranitar",2,[6,17],[100,134,110,95,100,61],0,0,0],[249,"Lugia",2,[14,3],[106,90,130,90,154,110],1,0,0],[250,"Ho-Oh",2,[10,3],[106,130,90,110,154,90],1,0,0],[251,"Celebi",2,[14,12],[100,100,100,100,100,100],2,0,0],[252,"Treecko",3,[12],[40,45,35,65,55,70],0,0,1],[253,"Grovyle",3,[12],[50,65,45,85,65,95],0,0,1],[254,"Sceptile",3,[12],[70,85,65,105,85,120],0,0,0],[255,"Torchic",3,[10],[45,60,40,70,50,45],0,0,1],[256,"Combusken",3,[10,2],[60,85,60,85,60,55],0,0,1],[257,"Blaziken",3,[10,2],[80,120,70,110,70,80],0,0,0],[258,"Mudkip",3,[11],[50,70,50,50,50,40],0,0,1],[259,"Marshtomp",3,[11,5],[70,85,70,60,70,50],0,0,1],[260,"Swampert",3,[11,5],[100,110,90,85,90,60],0,0,0],[261,"Poochyena",3,[17],[35,55,35,30,30,35],0,0,1],[262,"Mightyena",3,[17],[70,90,70,60,60,70],0,0,0],[263,"Zigzagoon",3,[1],[38,30,41,30,41,60],0,0,1],[264,"Linoone",3,[1],[78,70,61,50,61,100],0,0,1],[265,"Wurmple",3,[7],[45,45,35,20,30,20],0,0,1],[266,"Silcoon",3,[7],[50,35,55,25,25,15],0,0,1],[267,"Beautifly",3,[7,3],[60,70,50,100,50,65],0,0,0],[268,"Cascoon",3,[7],[50,35,55,25,25,15],0,0,1],[269,"Dustox",3,[7,4],[60,50,70,50,90,65],0,0,0],[270,"Lotad",3,[11,12],[40,30,30,40,50,30],0,0,1],[271,"Lombre",3,[11,12],[60,50,50,60,70,50],0,0,1],[272,"Ludicolo",3,[11,12],[80,70,70,90,100,70],0,0,0],[273,"Seedot",3,[12],[40,40,50,30,30,30],0,0,1],[274,"Nuzleaf",3,[12,17],[70,70,40,60,40,60],0,0,1],[275,"Shiftry",3,[12,17],[90,100,60,90,60,80],0,0,0],[276,"Taillow",3,[1,3],[40,55,30,30,30,85],0,0,1],[277,"Swellow",3,[1,3],[60,85,60,75,50,125],0,0,0],[278,"Wingull",3,[11,3],[40,30,30,55,30,85],0,0,1],[279,"Pelipper",3,[11,3],[60,50,100,95,70,65],0,0,0],[280,"Ralts",3,[14,18],[28,25,25,45,35,40],0,0,1],[281,"Kirlia",3,[14,18],[38,35,35,65,55,50],0,0,1],[282,"Gardevoir",3,[14,18],[68,65,65,125,115,80],0,0,0],[283,"Surskit",3,[7,11],[40,30,32,50,52,65],0,0,1],[284,"Masquerain",3,[7,3],[70,60,62,100,82,80],0,0,0],[285,"Shroomish",3,[12],[60,40,60,40,60,35],0,0,1],[286,"Breloom",3,[12,2],[60,130,80,60,60,70],0,0,0],[287,"Slakoth",3,[1],[60,60,60,35,35,30],0,0,1],[288,"Vigoroth",3,[1],[80,80,80,55,55,90],0,0,1],[289,"Slaking",3,[1],[150,160,100,95,65,100],0,0,0],[290,"Nincada",3,[7,5],[31,45,90,30,30,40],0,0,1],[291,"Ninjask",3,[7,3],[61,90,45,50,50,160],0,0,0],[292,"Shedinja",3,[7,8],[1,90,45,30,30,40],0,0,0],[293,"Whismur",3,[1],[64,51,23,51,23,28],0,0,1],[294,"Loudred",3,[1],[84,71,43,71,43,48],0,0,1],[295,"Exploud",3,[1],[104,91,63,91,73,68],0,0,0],[296,"Makuhita",3,[2],[72,60,30,20,30,25],0,0,1],[297,"Hariyama",3,[2],[144,120,60,40,60,50],0,0,0],[298,"Azurill",3,[1,18],[50,20,40,20,40,20],0,0,1],[299,"Nosepass",3,[6],[30,45,135,45,90,30],0,0,1],[300,"Skitty",3,[1],[50,45,45,35,35,50],0,0,1],[301,"Delcatty",3,[1],[70,65,65,55,55,90],0,0,0],[302,"Sableye",3,[17,8],[50,75,75,65,65,50],0,0,0],[303,"Mawile",3,[9,18],[50,85,85,55,55,50],0,0,0],[304,"Aron",3,[9,6],[50,70,100,40,40,30],0,0,1],[305,"Lairon",3,[9,6],[60,90,140,50,50,40],0,0,1],[306,"Aggron",3,[9,6],[70,110,180,60,60,50],0,0,0],[307,"Meditite",3,[2,14],[30,40,55,40,55,60],0,0,1],[308,"Medicham",3,[2,14],[60,60,75,60,75,80],0,0,0],[309,"Electrike",3,[13],[40,45,40,65,40,65],0,0,1],[310,"Manectric",3,[13],[70,75,60,105,60,105],0,0,0],[311,"Plusle",3,[13],[60,50,40,85,75,95],0,0,0],[312,"Minun",3,[13],[60,40,50,75,85,95],0,0,0],[313,"Volbeat",3,[7],[65,73,75,47,85,85],0,0,0],[314,"Illumise",3,[7],[65,47,75,73,85,85],0,0,0],[315,"Roselia",3,[12,4],[50,60,45,100,80,65],0,0,1],[316,"Gulpin",3,[4],[70,43,53,43,53,40],0,0,1],[317,"Swalot",3,[4],[100,73,83,73,83,55],0,0,0],[318,"Carvanha",3,[11,17],[45,90,20,65,20,65],0,0,1],[319,"Sharpedo",3,[11,17],[70,120,40,95,40,95],0,0,0],[320,"Wailmer",3,[11],[130,70,35,70,35,60],0,0,1],[321,"Wailord",3,[11],[170,90,45,90,45,60],0,0,0],[322,"Numel",3,[10,5],[60,60,40,65,45,35],0,0,1],[323,"Camerupt",3,[10,5],[70,100,70,105,75,40],0,0,0],[324,"Torkoal",3,[10],[70,85,140,85,70,20],0,0,0],[325,"Spoink",3,[14],[60,25,35,70,80,60],0,0,1],[326,"Grumpig",3,[14],[80,45,65,90,110,80],0,0,0],[327,"Spinda",3,[1],[60,60,60,60,60,60],0,0,0],[328,"Trapinch",3,[5],[45,100,45,45,45,10],0,0,1],[329,"Vibrava",3,[5,16],[50,70,50,50,50,70],0,0,1],[330,"Flygon",3,[5,16],[80,100,80,80,80,100],0,0,0],[331,"Cacnea",3,[12],[50,85,40,85,40,35],0,0,1],[332,"Cacturne",3,[12,17],[70,115,60,115,60,55],0,0,0],[333,"Swablu",3,[1,3],[45,40,60,40,75,50],0,0,1],[334,"Altaria",3,[16,3],[75,70,90,70,105,80],0,0,0],[335,"Zangoose",3,[1],[73,115,60,60,60,90],0,0,0],[336,"Seviper",3,[4],[73,100,60,100,60,65],0,0,0],[337,"Lunatone",3,[6,14],[90,55,65,95,85,70],0,0,0],[338,"Solrock",3,[6,14],[90,95,85,55,65,70],0,0,0],[339,"Barboach",3,[11,5],[50,48,43,46,41,60],0,0,1],[340,"Whiscash",3,[11,5],[110,78,73,76,71,60],0,0,0],[341,"Corphish",3,[11],[43,80,65,50,35,35],0,0,1],[342,"Crawdaunt",3,[11,17],[63,120,85,90,55,55],0,0,0],[343,"Baltoy",3,[5,14],[40,40,55,40,70,55],0,0,1],[344,"Claydol",3,[5,14],[60,70,105,70,120,75],0,0,0],[345,"Lileep",3,[6,12],[66,41,77,61,87,23],0,0,1],[346,"Cradily",3,[6,12],[86,81,97,81,107,43],0,0,0],[347,"Anorith",3,[6,7],[45,95,50,40,50,75],0,0,1],[348,"Armaldo",3,[6,7],[75,125,100,70,80,45],0,0,0],[349,"Feebas",3,[11],[20,15,20,10,55,80],0,0,1],[350,"Milotic",3,[11],[95,60,79,100,125,81],0,0,0],[351,"Castform",3,[1],[70,70,70,70,70,70],0,0,0],[352,"Kecleon",3,[1],[60,90,70,60,120,40],0,0,0],[353,"Shuppet",3,[8],[44,75,35,63,33,45],0,0,1],[354,"Banette",3,[8],[64,115,65,83,63,65],0,0,0],[355,"Duskull",3,[8],[20,40,90,30,90,25],0,0,1],[356,"Dusclops",3,[8],[40,70,130,60,130,25],0,0,1],[357,"Tropius",3,[12,3],[99,68,83,72,87,51],0,0,0],[358,"Chimecho",3,[14],[75,50,80,95,90,65],0,0,0],[359,"Absol",3,[17],[65,130,60,75,60,75],0,0,0],[360,"Wynaut",3,[14],[95,23,48,23,48,23],0,0,1],[361,"Snorunt",3,[15],[50,50,50,50,50,50],0,0,1],[362,"Glalie",3,[15],[80,80,80,80,80,80],0,0,0],[363,"Spheal",3,[15,11],[70,40,50,55,50,25],0,0,1],[364,"Sealeo",3,[15,11],[90,60,70,75,70,45],0,0,1],[365,"Walrein",3,[15,11],[110,80,90,95,90,65],0,0,0],[366,"Clamperl",3,[11],[35,64,85,74,55,32],0,0,1],[367,"Huntail",3,[11],[55,104,105,94,75,52],0,0,0],[368,"Gorebyss",3,[11],[55,84,105,114,75,52],0,0,0],[369,"Relicanth",3,[11,6],[100,90,130,45,65,55],0,0,0],[370,"Luvdisc",3,[11],[43,30,55,40,65,97],0,0,0],[371,"Bagon",3,[16],[45,75,60,40,30,50],0,0,1],[372,"Shelgon",3,[16],[65,95,100,60,50,50],0,0,1],[373,"Salamence",3,[16,3],[95,135,80,110,80,100],0,0,0],[374,"Beldum",3,[9,14],[40,55,80,35,60,30],0,0,1],[375,"Metang",3,[9,14],[60,75,100,55,80,50],0,0,1],[376,"Metagross",3,[9,14],[80,135,130,95,90,70],0,0,0],[377,"Regirock",3,[6],[80,100,200,50,100,50],1,0,0],[378,"Regice",3,[15],[80,50,100,100,200,50],1,0,0],[379,"Registeel",3,[9],[80,75,150,75,150,50],1,0,0],[380,"Latias",3,[16,14],[80,80,90,110,130,110],1,0,0],[381,"Latios",3,[16,14],[80,90,80,130,110,110],1,0,0],[382,"Kyogre",3,[11],[100,100,90,150,140,90],1,0,0],[383,"Groudon",3,[5],[100,150,140,100,90,90],1,0,0],[384,"Rayquaza",3,[16,3],[105,150,90,150,90,95],1,0,0],[385,"Jirachi",3,[9,14],[100,100,100,100,100,100],2,0,0],[386,"Deoxys",3,[14],[50,150,50,150,50,150],2,0,0],[387,"Turtwig",4,[12],[55,68,64,45,55,31],0,0,1],[388,"Grotle",4,[12],[75,89,85,55,65,36],0,0,1],[389,"Torterra",4,[12,5],[95,109,105,75,85,56],0,0,0],[390,"Chimchar",4,[10],[44,58,44,58,44,61],0,0,1],[391,"Monferno",4,[10,2],[64,78,52,78,52,81],0,0,1],[392,"Infernape",4,[10,2],[76,104,71,104,71,108],0,0,0],[393,"Piplup",4,[11],[53,51,53,61,56,40],0,0,1],[394,"Prinplup",4,[11],[64,66,68,81,76,50],0,0,1],[395,"Empoleon",4,[11,9],[84,86,88,111,101,60],0,0,0],[396,"Starly",4,[1,3],[40,55,30,30,30,60],0,0,1],[397,"Staravia",4,[1,3],[55,75,50,40,40,80],0,0,1],[398,"Staraptor",4,[1,3],[85,120,70,50,60,100],0,0,0],[399,"Bidoof",4,[1],[59,45,40,35,40,31],0,0,1],[400,"Bibarel",4,[1,11],[79,85,60,55,60,71],0,0,0],[401,"Kricketot",4,[7],[37,25,41,25,41,25],0,0,1],[402,"Kricketune",4,[7],[77,85,51,55,51,65],0,0,0],[403,"Shinx",4,[13],[45,65,34,40,34,45],0,0,1],[404,"Luxio",4,[13],[60,85,49,60,49,60],0,0,1],[405,"Luxray",4,[13],[80,120,79,95,79,70],0,0,0],[406,"Budew",4,[12,4],[40,30,35,50,70,55],0,0,1],[407,"Roserade",4,[12,4],[60,70,65,125,105,90],0,0,0],[408,"Cranidos",4,[6],[67,125,40,30,30,58],0,0,1],[409,"Rampardos",4,[6],[97,165,60,65,50,58],0,0,0],[410,"Shieldon",4,[6,9],[30,42,118,42,88,30],0,0,1],[411,"Bastiodon",4,[6,9],[60,52,168,47,138,30],0,0,0],[412,"Burmy",4,[7],[40,29,45,29,45,36],0,0,1],[413,"Wormadam",4,[7,12],[60,59,85,79,105,36],0,0,0],[414,"Mothim",4,[7,3],[70,94,50,94,50,66],0,0,0],[415,"Combee",4,[7,3],[30,30,42,30,42,70],0,0,1],[416,"Vespiquen",4,[7,3],[70,80,102,80,102,40],0,0,0],[417,"Pachirisu",4,[13],[60,45,70,45,90,95],0,0,0],[418,"Buizel",4,[11],[55,65,35,60,30,85],0,0,1],[419,"Floatzel",4,[11],[85,105,55,85,50,115],0,0,0],[420,"Cherubi",4,[12],[45,35,45,62,53,35],0,0,1],[421,"Cherrim",4,[12],[70,60,70,87,78,85],0,0,0],[422,"Shellos",4,[11],[76,48,48,57,62,34],0,0,1],[423,"Gastrodon",4,[11,5],[111,83,68,92,82,39],0,0,0],[424,"Ambipom",4,[1],[75,100,66,60,66,115],0,0,0],[425,"Drifloon",4,[8,3],[90,50,34,60,44,70],0,0,1],[426,"Drifblim",4,[8,3],[150,80,44,90,54,80],0,0,0],[427,"Buneary",4,[1],[55,66,44,44,56,85],0,0,1],[428,"Lopunny",4,[1],[65,76,84,54,96,105],0,0,0],[429,"Mismagius",4,[8],[60,60,60,105,105,105],0,0,0],[430,"Honchkrow",4,[17,3],[100,125,52,105,52,71],0,0,0],[431,"Glameow",4,[1],[49,55,42,42,37,85],0,0,1],[432,"Purugly",4,[1],[71,82,64,64,59,112],0,0,0],[433,"Chingling",4,[14],[45,30,50,65,50,45],0,0,1],[434,"Stunky",4,[4,17],[63,63,47,41,41,74],0,0,1],[435,"Skuntank",4,[4,17],[103,93,67,71,61,84],0,0,0],[436,"Bronzor",4,[9,14],[57,24,86,24,86,23],0,0,1],[437,"Bronzong",4,[9,14],[67,89,116,79,116,33],0,0,0],[438,"Bonsly",4,[6],[50,80,95,10,45,10],0,0,1],[439,"Mime Jr.",4,[14,18],[20,25,45,70,90,60],0,0,1],[440,"Happiny",4,[1],[100,5,5,15,65,30],0,0,1],[441,"Chatot",4,[1,3],[76,65,45,92,42,91],0,0,0],[442,"Spiritomb",4,[8,17],[50,92,108,92,108,35],0,0,0],[443,"Gible",4,[16,5],[58,70,45,40,45,42],0,0,1],[444,"Gabite",4,[16,5],[68,90,65,50,55,82],0,0,1],[445,"Garchomp",4,[16,5],[108,130,95,80,85,102],0,0,0],[446,"Munchlax",4,[1],[135,85,40,40,85,5],0,0,1],[447,"Riolu",4,[2],[40,70,40,35,40,60],0,0,1],[448,"Lucario",4,[2,9],[70,110,70,115,70,90],0,0,0],[449,"Hippopotas",4,[5],[68,72,78,38,42,32],0,0,1],[450,"Hippowdon",4,[5],[108,112,118,68,72,47],0,0,0],[451,"Skorupi",4,[4,7],[40,50,90,30,55,65],0,0,1],[452,"Drapion",4,[4,17],[70,90,110,60,75,95],0,0,0],[453,"Croagunk",4,[4,2],[48,61,40,61,40,50],0,0,1],[454,"Toxicroak",4,[4,2],[83,106,65,86,65,85],0,0,0],[455,"Carnivine",4,[12],[74,100,72,90,72,46],0,0,0],[456,"Finneon",4,[11],[49,49,56,49,61,66],0,0,1],[457,"Lumineon",4,[11],[69,69,76,69,86,91],0,0,0],[458,"Mantyke",4,[11,3],[45,20,50,60,120,50],0,0,1],[459,"Snover",4,[12,15],[60,62,50,62,60,40],0,0,1],[460,"Abomasnow",4,[12,15],[90,92,75,92,85,60],0,0,0],[461,"Weavile",4,[17,15],[70,120,65,45,85,125],0,0,0],[462,"Magnezone",4,[13,9],[70,70,115,130,90,60],0,0,0],[463,"Lickilicky",4,[1],[110,85,95,80,95,50],0,0,0],[464,"Rhyperior",4,[5,6],[115,140,130,55,55,40],0,0,0],[465,"Tangrowth",4,[12],[100,100,125,110,50,50],0,0,0],[466,"Electivire",4,[13],[75,123,67,95,85,95],0,0,0],[467,"Magmortar",4,[10],[75,95,67,125,95,83],0,0,0],[468,"Togekiss",4,[18,3],[85,50,95,120,115,80],0,0,0],[469,"Yanmega",4,[7,3],[86,76,86,116,56,95],0,0,0],[470,"Leafeon",4,[12],[65,110,130,60,65,95],0,0,0],[471,"Glaceon",4,[15],[65,60,110,130,95,65],0,0,0],[472,"Gliscor",4,[5,3],[75,95,125,45,75,95],0,0,0],[473,"Mamoswine",4,[15,5],[110,130,80,70,60,80],0,0,0],[474,"Porygon-Z",4,[1],[85,80,70,135,75,90],0,0,0],[475,"Gallade",4,[14,2],[68,125,65,65,115,80],0,0,0],[476,"Probopass",4,[6,9],[60,55,145,75,150,40],0,0,0],[477,"Dusknoir",4,[8],[45,100,135,65,135,45],0,0,0],[478,"Froslass",4,[15,8],[70,80,70,80,70,110],0,0,0],[479,"Rotom",4,[13,8],[50,50,77,95,77,91],0,0,0],[480,"Uxie",4,[14],[75,75,130,75,130,95],1,0,0],[481,"Mesprit",4,[14],[80,105,105,105,105,80],1,0,0],[482,"Azelf",4,[14],[75,125,70,125,70,115],1,0,0],[483,"Dialga",4,[9,16],[100,120,120,150,100,90],1,0,0],[484,"Palkia",4,[11,16],[90,120,100,150,120,100],1,0,0],[485,"Heatran",4,[10,9],[91,90,106,130,106,77],1,0,0],[486,"Regigigas",4,[1],[110,160,110,80,110,100],1,0,0],[487,"Giratina",4,[8,16],[150,100,120,100,120,90],1,0,0],[488,"Cresselia",4,[14],[120,70,110,75,120,85],1,0,0],[489,"Phione",4,[11],[80,80,80,80,80,80],2,0,0],[490,"Manaphy",4,[11],[100,100,100,100,100,100],2,0,0],[491,"Darkrai",4,[17],[70,90,90,135,90,125],2,0,0],[492,"Shaymin",4,[12],[100,100,100,100,100,100],2,0,0],[493,"Arceus",4,[1],[120,120,120,120,120,120],2,0,0],[494,"Victini",5,[14,10],[100,100,100,100,100,100],2,0,0],[495,"Snivy",5,[12],[45,45,55,45,55,63],0,0,1],[496,"Servine",5,[12],[60,60,75,60,75,83],0,0,1],[497,"Serperior",5,[12],[75,75,95,75,95,113],0,0,0],[498,"Tepig",5,[10],[65,63,45,45,45,45],0,0,1],[499,"Pignite",5,[10,2],[90,93,55,70,55,55],0,0,1],[500,"Emboar",5,[10,2],[110,123,65,100,65,65],0,0,0],[501,"Oshawott",5,[11],[55,55,45,63,45,45],0,0,1],[502,"Dewott",5,[11],[75,75,60,83,60,60],0,0,1],[503,"Samurott",5,[11],[95,100,85,108,70,70],0,0,0],[504,"Patrat",5,[1],[45,55,39,35,39,42],0,0,1],[505,"Watchog",5,[1],[60,85,69,60,69,77],0,0,0],[506,"Lillipup",5,[1],[45,60,45,25,45,55],0,0,1],[507,"Herdier",5,[1],[65,80,65,35,65,60],0,0,1],[508,"Stoutland",5,[1],[85,110,90,45,90,80],0,0,0],[509,"Purrloin",5,[17],[41,50,37,50,37,66],0,0,1],[510,"Liepard",5,[17],[64,88,50,88,50,106],0,0,0],[511,"Pansage",5,[12],[50,53,48,53,48,64],0,0,1],[512,"Simisage",5,[12],[75,98,63,98,63,101],0,0,0],[513,"Pansear",5,[10],[50,53,48,53,48,64],0,0,1],[514,"Simisear",5,[10],[75,98,63,98,63,101],0,0,0],[515,"Panpour",5,[11],[50,53,48,53,48,64],0,0,1],[516,"Simipour",5,[11],[75,98,63,98,63,101],0,0,0],[517,"Munna",5,[14],[76,25,45,67,55,24],0,0,1],[518,"Musharna",5,[14],[116,55,85,107,95,29],0,0,0],[519,"Pidove",5,[1,3],[50,55,50,36,30,43],0,0,1],[520,"Tranquill",5,[1,3],[62,77,62,50,42,65],0,0,1],[521,"Unfezant",5,[1,3],[80,115,80,65,55,93],0,0,0],[522,"Blitzle",5,[13],[45,60,32,50,32,76],0,0,1],[523,"Zebstrika",5,[13],[75,100,63,80,63,116],0,0,0],[524,"Roggenrola",5,[6],[55,75,85,25,25,15],0,0,1],[525,"Boldore",5,[6],[70,105,105,50,40,20],0,0,1],[526,"Gigalith",5,[6],[85,135,130,60,80,25],0,0,0],[527,"Woobat",5,[14,3],[65,45,43,55,43,72],0,0,1],[528,"Swoobat",5,[14,3],[67,57,55,77,55,114],0,0,0],[529,"Drilbur",5,[5],[60,85,40,30,45,68],0,0,1],[530,"Excadrill",5,[5,9],[110,135,60,50,65,88],0,0,0],[531,"Audino",5,[1],[103,60,86,60,86,50],0,0,0],[532,"Timburr",5,[2],[75,80,55,25,35,35],0,0,1],[533,"Gurdurr",5,[2],[85,105,85,40,50,40],0,0,1],[534,"Conkeldurr",5,[2],[105,140,95,55,65,45],0,0,0],[535,"Tympole",5,[11],[50,50,40,50,40,64],0,0,1],[536,"Palpitoad",5,[11,5],[75,65,55,65,55,69],0,0,1],[537,"Seismitoad",5,[11,5],[105,95,75,85,75,74],0,0,0],[538,"Throh",5,[2],[120,100,85,30,85,45],0,0,0],[539,"Sawk",5,[2],[75,125,75,30,75,85],0,0,0],[540,"Sewaddle",5,[7,12],[45,53,70,40,60,42],0,0,1],[541,"Swadloon",5,[7,12],[55,63,90,50,80,42],0,0,1],[542,"Leavanny",5,[7,12],[75,103,80,70,80,92],0,0,0],[543,"Venipede",5,[7,4],[30,45,59,30,39,57],0,0,1],[544,"Whirlipede",5,[7,4],[40,55,99,40,79,47],0,0,1],[545,"Scolipede",5,[7,4],[60,100,89,55,69,112],0,0,0],[546,"Cottonee",5,[12,18],[40,27,60,37,50,66],0,0,1],[547,"Whimsicott",5,[12,18],[60,67,85,77,75,116],0,0,0],[548,"Petilil",5,[12],[45,35,50,70,50,30],0,0,1],[549,"Lilligant",5,[12],[70,60,75,110,75,90],0,0,0],[550,"Basculin",5,[11],[70,92,65,80,55,98],0,0,1],[551,"Sandile",5,[5,17],[50,72,35,35,35,65],0,0,1],[552,"Krokorok",5,[5,17],[60,82,45,45,45,74],0,0,1],[553,"Krookodile",5,[5,17],[95,117,80,65,70,92],0,0,0],[554,"Darumaka",5,[10],[70,90,45,15,45,50],0,0,1],[555,"Darmanitan",5,[10],[105,140,55,30,55,95],0,0,0],[556,"Maractus",5,[12],[75,86,67,106,67,60],0,0,0],[557,"Dwebble",5,[7,6],[50,65,85,35,35,55],0,0,1],[558,"Crustle",5,[7,6],[70,105,125,65,75,45],0,0,0],[559,"Scraggy",5,[17,2],[50,75,70,35,70,48],0,0,1],[560,"Scrafty",5,[17,2],[65,90,115,45,115,58],0,0,0],[561,"Sigilyph",5,[14,3],[72,58,80,103,80,97],0,0,0],[562,"Yamask",5,[8],[38,30,85,55,65,30],0,0,1],[563,"Cofagrigus",5,[8],[58,50,145,95,105,30],0,0,0],[564,"Tirtouga",5,[11,6],[54,78,103,53,45,22],0,0,1],[565,"Carracosta",5,[11,6],[74,108,133,83,65,32],0,0,0],[566,"Archen",5,[6,3],[55,112,45,74,45,70],0,0,1],[567,"Archeops",5,[6,3],[75,140,65,112,65,110],0,0,0],[568,"Trubbish",5,[4],[50,50,62,40,62,65],0,0,1],[569,"Garbodor",5,[4],[80,95,82,60,82,75],0,0,0],[570,"Zorua",5,[17],[40,65,40,80,40,65],0,0,1],[571,"Zoroark",5,[17],[60,105,60,120,60,105],0,0,0],[572,"Minccino",5,[1],[55,50,40,40,40,75],0,0,1],[573,"Cinccino",5,[1],[75,95,60,65,60,115],0,0,0],[574,"Gothita",5,[14],[45,30,50,55,65,45],0,0,1],[575,"Gothorita",5,[14],[60,45,70,75,85,55],0,0,1],[576,"Gothitelle",5,[14],[70,55,95,95,110,65],0,0,0],[577,"Solosis",5,[14],[45,30,40,105,50,20],0,0,1],[578,"Duosion",5,[14],[65,40,50,125,60,30],0,0,1],[579,"Reuniclus",5,[14],[110,65,75,125,85,30],0,0,0],[580,"Ducklett",5,[11,3],[62,44,50,44,50,55],0,0,1],[581,"Swanna",5,[11,3],[75,87,63,87,63,98],0,0,0],[582,"Vanillite",5,[15],[36,50,50,65,60,44],0,0,1],[583,"Vanillish",5,[15],[51,65,65,80,75,59],0,0,1],[584,"Vanilluxe",5,[15],[71,95,85,110,95,79],0,0,0],[585,"Deerling",5,[1,12],[60,60,50,40,50,75],0,0,1],[586,"Sawsbuck",5,[1,12],[80,100,70,60,70,95],0,0,0],[587,"Emolga",5,[13,3],[55,75,60,75,60,103],0,0,0],[588,"Karrablast",5,[7],[50,75,45,40,45,60],0,0,1],[589,"Escavalier",5,[7,9],[70,135,105,60,105,20],0,0,0],[590,"Foongus",5,[12,4],[69,55,45,55,55,15],0,0,1],[591,"Amoonguss",5,[12,4],[114,85,70,85,80,30],0,0,0],[592,"Frillish",5,[11,8],[55,40,50,65,85,40],0,0,1],[593,"Jellicent",5,[11,8],[100,60,70,85,105,60],0,0,0],[594,"Alomomola",5,[11],[165,75,80,40,45,65],0,0,0],[595,"Joltik",5,[7,13],[50,47,50,57,50,65],0,0,1],[596,"Galvantula",5,[7,13],[70,77,60,97,60,108],0,0,0],[597,"Ferroseed",5,[12,9],[44,50,91,24,86,10],0,0,1],[598,"Ferrothorn",5,[12,9],[74,94,131,54,116,20],0,0,0],[599,"Klink",5,[9],[40,55,70,45,60,30],0,0,1],[600,"Klang",5,[9],[60,80,95,70,85,50],0,0,1],[601,"Klinklang",5,[9],[60,100,115,70,85,90],0,0,0],[602,"Tynamo",5,[13],[35,55,40,45,40,60],0,0,1],[603,"Eelektrik",5,[13],[65,85,70,75,70,40],0,0,1],[604,"Eelektross",5,[13],[85,115,80,105,80,50],0,0,0],[605,"Elgyem",5,[14],[55,55,55,85,55,30],0,0,1],[606,"Beheeyem",5,[14],[75,75,75,125,95,40],0,0,0],[607,"Litwick",5,[8,10],[50,30,55,65,55,20],0,0,1],[608,"Lampent",5,[8,10],[60,40,60,95,60,55],0,0,1],[609,"Chandelure",5,[8,10],[60,55,90,145,90,80],0,0,0],[610,"Axew",5,[16],[46,87,60,30,40,57],0,0,1],[611,"Fraxure",5,[16],[66,117,70,40,50,67],0,0,1],[612,"Haxorus",5,[16],[76,147,90,60,70,97],0,0,0],[613,"Cubchoo",5,[15],[55,70,40,60,40,40],0,0,1],[614,"Beartic",5,[15],[95,130,80,70,80,50],0,0,0],[615,"Cryogonal",5,[15],[80,50,50,95,135,105],0,0,0],[616,"Shelmet",5,[7],[50,40,85,40,65,25],0,0,1],[617,"Accelgor",5,[7],[80,70,40,100,60,145],0,0,0],[618,"Stunfisk",5,[5,13],[109,66,84,81,99,32],0,0,0],[619,"Mienfoo",5,[2],[45,85,50,55,50,65],0,0,1],[620,"Mienshao",5,[2],[65,125,60,95,60,105],0,0,0],[621,"Druddigon",5,[16],[77,120,90,60,90,48],0,0,0],[622,"Golett",5,[5,8],[59,74,50,35,50,35],0,0,1],[623,"Golurk",5,[5,8],[89,124,80,55,80,55],0,0,0],[624,"Pawniard",5,[17,9],[45,85,70,40,40,60],0,0,1],[625,"Bisharp",5,[17,9],[65,125,100,60,70,70],0,0,1],[626,"Bouffalant",5,[1],[95,110,95,40,95,55],0,0,0],[627,"Rufflet",5,[1,3],[70,83,50,37,50,60],0,0,1],[628,"Braviary",5,[1,3],[100,123,75,57,75,80],0,0,0],[629,"Vullaby",5,[17,3],[70,55,75,45,65,60],0,0,1],[630,"Mandibuzz",5,[17,3],[110,65,105,55,95,80],0,0,0],[631,"Heatmor",5,[10],[85,97,66,105,66,65],0,0,0],[632,"Durant",5,[7,9],[58,109,112,48,48,109],0,0,0],[633,"Deino",5,[17,16],[52,65,50,45,50,38],0,0,1],[634,"Zweilous",5,[17,16],[72,85,70,65,70,58],0,0,1],[635,"Hydreigon",5,[17,16],[92,105,90,125,90,98],0,0,0],[636,"Larvesta",5,[7,10],[55,85,55,50,55,60],0,0,1],[637,"Volcarona",5,[7,10],[85,60,65,135,105,100],0,0,0],[638,"Cobalion",5,[9,2],[91,90,129,90,72,108],1,0,0],[639,"Terrakion",5,[6,2],[91,129,90,72,90,108],1,0,0],[640,"Virizion",5,[12,2],[91,90,72,90,129,108],1,0,0],[641,"Tornadus",5,[3],[79,115,70,125,80,111],1,0,0],[642,"Thundurus",5,[13,3],[79,115,70,125,80,111],1,0,0],[643,"Reshiram",5,[16,10],[100,120,100,150,120,90],1,0,0],[644,"Zekrom",5,[16,13],[100,150,120,120,100,90],1,0,0],[645,"Landorus",5,[5,3],[89,125,90,115,80,101],1,0,0],[646,"Kyurem",5,[16,15],[125,130,90,130,90,95],1,0,0],[647,"Keldeo",5,[11,2],[91,72,90,129,90,108],2,0,0],[648,"Meloetta",5,[1,14],[100,77,77,128,128,90],2,0,0],[649,"Genesect",5,[7,9],[71,120,95,120,95,99],2,0,0],[650,"Chespin",6,[12],[56,61,65,48,45,38],0,0,1],[651,"Quilladin",6,[12],[61,78,95,56,58,57],0,0,1],[652,"Chesnaught",6,[12,2],[88,107,122,74,75,64],0,0,0],[653,"Fennekin",6,[10],[40,45,40,62,60,60],0,0,1],[654,"Braixen",6,[10],[59,59,58,90,70,73],0,0,1],[655,"Delphox",6,[10,14],[75,69,72,114,100,104],0,0,0],[656,"Froakie",6,[11],[41,56,40,62,44,71],0,0,1],[657,"Frogadier",6,[11],[54,63,52,83,56,97],0,0,1],[658,"Greninja",6,[11,17],[72,95,67,103,71,122],0,0,0],[659,"Bunnelby",6,[1],[38,36,38,32,36,57],0,0,1],[660,"Diggersby",6,[1,5],[85,56,77,50,77,78],0,0,0],[661,"Fletchling",6,[1,3],[45,50,43,40,38,62],0,0,1],[662,"Fletchinder",6,[10,3],[62,73,55,56,52,84],0,0,1],[663,"Talonflame",6,[10,3],[78,81,71,74,69,126],0,0,0],[664,"Scatterbug",6,[7],[38,35,40,27,25,35],0,0,1],[665,"Spewpa",6,[7],[45,22,60,27,30,29],0,0,1],[666,"Vivillon",6,[7,3],[80,52,50,90,50,89],0,0,0],[667,"Litleo",6,[10,1],[62,50,58,73,54,72],0,0,1],[668,"Pyroar",6,[10,1],[86,68,72,109,66,106],0,0,0],[669,"Flabébé",6,[18],[44,38,39,61,79,42],0,0,1],[670,"Floette",6,[18],[54,45,47,75,98,52],0,0,1],[671,"Florges",6,[18],[78,65,68,112,154,75],0,0,0],[672,"Skiddo",6,[12],[66,65,48,62,57,52],0,0,1],[673,"Gogoat",6,[12],[123,100,62,97,81,68],0,0,0],[674,"Pancham",6,[2],[67,82,62,46,48,43],0,0,1],[675,"Pangoro",6,[2,17],[95,124,78,69,71,58],0,0,0],[676,"Furfrou",6,[1],[75,80,60,65,90,102],0,0,0],[677,"Espurr",6,[14],[62,48,54,63,60,68],0,0,1],[678,"Meowstic",6,[14],[74,48,76,83,81,104],0,0,0],[679,"Honedge",6,[9,8],[45,80,100,35,37,28],0,0,1],[680,"Doublade",6,[9,8],[59,110,150,45,49,35],0,0,1],[681,"Aegislash",6,[9,8],[60,50,140,50,140,60],0,0,0],[682,"Spritzee",6,[18],[78,52,60,63,65,23],0,0,1],[683,"Aromatisse",6,[18],[101,72,72,99,89,29],0,0,0],[684,"Swirlix",6,[18],[62,48,66,59,57,49],0,0,1],[685,"Slurpuff",6,[18],[82,80,86,85,75,72],0,0,0],[686,"Inkay",6,[17,14],[53,54,53,37,46,45],0,0,1],[687,"Malamar",6,[17,14],[86,92,88,68,75,73],0,0,0],[688,"Binacle",6,[6,11],[42,52,67,39,56,50],0,0,1],[689,"Barbaracle",6,[6,11],[72,105,115,54,86,68],0,0,0],[690,"Skrelp",6,[4,11],[50,60,60,60,60,30],0,0,1],[691,"Dragalge",6,[4,16],[65,75,90,97,123,44],0,0,0],[692,"Clauncher",6,[11],[50,53,62,58,63,44],0,0,1],[693,"Clawitzer",6,[11],[71,73,88,120,89,59],0,0,0],[694,"Helioptile",6,[13,1],[44,38,33,61,43,70],0,0,1],[695,"Heliolisk",6,[13,1],[62,55,52,109,94,109],0,0,0],[696,"Tyrunt",6,[6,16],[58,89,77,45,45,48],0,0,1],[697,"Tyrantrum",6,[6,16],[82,121,119,69,59,71],0,0,0],[698,"Amaura",6,[6,15],[77,59,50,67,63,46],0,0,1],[699,"Aurorus",6,[6,15],[123,77,72,99,92,58],0,0,0],[700,"Sylveon",6,[18],[95,65,65,110,130,60],0,0,0],[701,"Hawlucha",6,[2,3],[78,92,75,74,63,118],0,0,0],[702,"Dedenne",6,[13,18],[67,58,57,81,67,101],0,0,0],[703,"Carbink",6,[6,18],[50,50,150,50,150,50],0,0,0],[704,"Goomy",6,[16],[45,50,35,55,75,40],0,0,1],[705,"Sliggoo",6,[16],[68,75,53,83,113,60],0,0,1],[706,"Goodra",6,[16],[90,100,70,110,150,80],0,0,0],[707,"Klefki",6,[9,18],[57,80,91,80,87,75],0,0,0],[708,"Phantump",6,[8,12],[43,70,48,50,60,38],0,0,1],[709,"Trevenant",6,[8,12],[85,110,76,65,82,56],0,0,0],[710,"Pumpkaboo",6,[8,12],[49,66,70,44,55,51],0,0,1],[711,"Gourgeist",6,[8,12],[65,90,122,58,75,84],0,0,0],[712,"Bergmite",6,[15],[55,69,85,32,35,28],0,0,1],[713,"Avalugg",6,[15],[95,117,184,44,46,28],0,0,0],[714,"Noibat",6,[3,16],[40,30,35,45,40,55],0,0,1],[715,"Noivern",6,[3,16],[85,70,80,97,80,123],0,0,0],[716,"Xerneas",6,[18],[126,131,95,131,98,99],1,0,0],[717,"Yveltal",6,[17,3],[126,131,95,131,98,99],1,0,0],[718,"Zygarde",6,[16,5],[108,100,121,81,95,95],1,0,0],[719,"Diancie",6,[6,18],[50,100,150,100,150,50],2,0,0],[720,"Hoopa",6,[14,8],[80,110,60,150,130,70],2,0,0],[721,"Volcanion",6,[10,11],[80,110,120,130,90,70],2,0,0],[722,"Rowlet",7,[12,3],[68,55,55,50,50,42],0,0,1],[723,"Dartrix",7,[12,3],[78,75,75,70,70,52],0,0,1],[724,"Decidueye",7,[12,8],[78,107,75,100,100,70],0,0,0],[725,"Litten",7,[10],[45,65,40,60,40,70],0,0,1],[726,"Torracat",7,[10],[65,85,50,80,50,90],0,0,1],[727,"Incineroar",7,[10,17],[95,115,90,80,90,60],0,0,0],[728,"Popplio",7,[11],[50,54,54,66,56,40],0,0,1],[729,"Brionne",7,[11],[60,69,69,91,81,50],0,0,1],[730,"Primarina",7,[11,18],[80,74,74,126,116,60],0,0,0],[731,"Pikipek",7,[1,3],[35,75,30,30,30,65],0,0,1],[732,"Trumbeak",7,[1,3],[55,85,50,40,50,75],0,0,1],[733,"Toucannon",7,[1,3],[80,120,75,75,75,60],0,0,0],[734,"Yungoos",7,[1],[48,70,30,30,30,45],0,0,1],[735,"Gumshoos",7,[1],[88,110,60,55,60,45],0,0,0],[736,"Grubbin",7,[7],[47,62,45,55,45,46],0,0,1],[737,"Charjabug",7,[7,13],[57,82,95,55,75,36],0,0,1],[738,"Vikavolt",7,[7,13],[77,70,90,145,75,43],0,0,0],[739,"Crabrawler",7,[2],[47,82,57,42,47,63],0,0,1],[740,"Crabominable",7,[2,15],[97,132,77,62,67,43],0,0,0],[741,"Oricorio",7,[10,3],[75,70,70,98,70,93],0,0,0],[742,"Cutiefly",7,[7,18],[40,45,40,55,40,84],0,0,1],[743,"Ribombee",7,[7,18],[60,55,60,95,70,124],0,0,0],[744,"Rockruff",7,[6],[45,65,40,30,40,60],0,0,1],[745,"Lycanroc",7,[6],[75,115,65,55,65,112],0,0,0],[746,"Wishiwashi",7,[11],[45,20,20,25,25,40],0,0,0],[747,"Mareanie",7,[4,11],[50,53,62,43,52,45],0,0,1],[748,"Toxapex",7,[4,11],[50,63,152,53,142,35],0,0,0],[749,"Mudbray",7,[5],[70,100,70,45,55,45],0,0,1],[750,"Mudsdale",7,[5],[100,125,100,55,85,35],0,0,0],[751,"Dewpider",7,[11,7],[38,40,52,40,72,27],0,0,1],[752,"Araquanid",7,[11,7],[68,70,92,50,132,42],0,0,0],[753,"Fomantis",7,[12],[40,55,35,50,35,35],0,0,1],[754,"Lurantis",7,[12],[70,105,90,80,90,45],0,0,0],[755,"Morelull",7,[12,18],[40,35,55,65,75,15],0,0,1],[756,"Shiinotic",7,[12,18],[60,45,80,90,100,30],0,0,0],[757,"Salandit",7,[4,10],[48,44,40,71,40,77],0,0,1],[758,"Salazzle",7,[4,10],[68,64,60,111,60,117],0,0,0],[759,"Stufful",7,[1,2],[70,75,50,45,50,50],0,0,1],[760,"Bewear",7,[1,2],[120,125,80,55,60,60],0,0,0],[761,"Bounsweet",7,[12],[42,30,38,30,38,32],0,0,1],[762,"Steenee",7,[12],[52,40,48,40,48,62],0,0,1],[763,"Tsareena",7,[12],[72,120,98,50,98,72],0,0,0],[764,"Comfey",7,[18],[51,52,90,82,110,100],0,0,0],[765,"Oranguru",7,[1,14],[90,60,80,90,110,60],0,0,0],[766,"Passimian",7,[2],[100,120,90,40,60,80],0,0,0],[767,"Wimpod",7,[7,11],[25,35,40,20,30,80],0,0,1],[768,"Golisopod",7,[7,11],[75,125,140,60,90,40],0,0,0],[769,"Sandygast",7,[8,5],[55,55,80,70,45,15],0,0,1],[770,"Palossand",7,[8,5],[85,75,110,100,75,35],0,0,0],[771,"Pyukumuku",7,[11],[55,60,130,30,130,5],0,0,0],[772,"Código Cero",7,[1],[95,95,95,95,95,59],1,0,1],[773,"Silvally",7,[1],[95,95,95,95,95,95],1,0,0],[774,"Minior",7,[6,3],[60,60,100,60,100,60],0,0,0],[775,"Komala",7,[1],[65,115,65,75,95,65],0,0,0],[776,"Turtonator",7,[10,16],[60,78,135,91,85,36],0,0,0],[777,"Togedemaru",7,[13,9],[65,98,63,40,73,96],0,0,0],[778,"Mimikyu",7,[8,18],[55,90,80,50,105,96],0,0,0],[779,"Bruxish",7,[11,14],[68,105,70,70,70,92],0,0,0],[780,"Drampa",7,[1,16],[78,60,85,135,91,36],0,0,0],[781,"Dhelmise",7,[8,12],[70,131,100,86,90,40],0,0,0],[782,"Jangmo-o",7,[16],[45,55,65,45,45,45],0,0,1],[783,"Hakamo-o",7,[16,2],[55,75,90,65,70,65],0,0,1],[784,"Kommo-o",7,[16,2],[75,110,125,100,105,85],0,0,0],[785,"Tapu Koko",7,[13,18],[70,115,85,95,75,130],1,0,0],[786,"Tapu Lele",7,[14,18],[70,85,75,130,115,95],1,0,0],[787,"Tapu Bulu",7,[12,18],[70,130,115,85,95,75],1,0,0],[788,"Tapu Fini",7,[11,18],[70,75,115,95,130,85],1,0,0],[789,"Cosmog",7,[14],[43,29,31,29,31,37],1,0,1],[790,"Cosmoem",7,[14],[43,29,131,29,131,37],1,0,1],[791,"Solgaleo",7,[14,9],[137,137,107,113,89,97],1,0,0],[792,"Lunala",7,[14,8],[137,113,89,137,107,97],1,0,0],[793,"Nihilego",7,[6,4],[109,53,47,127,131,103],0,0,0],[794,"Buzzwole",7,[7,2],[107,139,139,53,53,79],0,0,0],[795,"Pheromosa",7,[7,2],[71,137,37,137,37,151],0,0,0],[796,"Xurkitree",7,[13],[83,89,71,173,71,83],0,0,0],[797,"Celesteela",7,[9,3],[97,101,103,107,101,61],0,0,0],[798,"Kartana",7,[12,9],[59,181,131,59,31,109],0,0,0],[799,"Guzzlord",7,[17,16],[223,101,53,97,53,43],0,0,0],[800,"Necrozma",7,[14],[97,107,101,127,89,79],1,0,0],[801,"Magearna",7,[9,18],[80,95,115,130,115,65],2,0,0],[802,"Marshadow",7,[2,8],[90,125,80,90,90,125],2,0,0],[803,"Poipole",7,[4],[67,73,67,73,67,73],0,0,1],[804,"Naganadel",7,[4,16],[73,73,73,127,73,121],0,0,0],[805,"Stakataka",7,[6,9],[61,131,211,53,101,13],0,0,0],[806,"Blacephalon",7,[10,8],[53,127,53,151,79,107],0,0,0],[807,"Zeraora",7,[13],[88,112,75,102,80,143],2,0,0],[808,"Meltan",7,[9],[46,65,65,55,35,34],2,0,1],[809,"Melmetal",7,[9],[135,143,143,80,65,34],2,0,0],[810,"Grookey",8,[12],[50,65,50,40,40,65],0,0,1],[811,"Thwackey",8,[12],[70,85,70,55,60,80],0,0,1],[812,"Rillaboom",8,[12],[100,125,90,60,70,85],0,0,0],[813,"Scorbunny",8,[10],[50,71,40,40,40,69],0,0,1],[814,"Raboot",8,[10],[65,86,60,55,60,94],0,0,1],[815,"Cinderace",8,[10],[80,116,75,65,75,119],0,0,0],[816,"Sobble",8,[11],[50,40,40,70,40,70],0,0,1],[817,"Drizzile",8,[11],[65,60,55,95,55,90],0,0,1],[818,"Inteleon",8,[11],[70,85,65,125,65,120],0,0,0],[819,"Skwovet",8,[1],[70,55,55,35,35,25],0,0,1],[820,"Greedent",8,[1],[120,95,95,55,75,20],0,0,0],[821,"Rookidee",8,[3],[38,47,35,33,35,57],0,0,1],[822,"Corvisquire",8,[3],[68,67,55,43,55,77],0,0,1],[823,"Corviknight",8,[3,9],[98,87,105,53,85,67],0,0,0],[824,"Blipbug",8,[7],[25,20,20,25,45,45],0,0,1],[825,"Dottler",8,[7,14],[50,35,80,50,90,30],0,0,1],[826,"Orbeetle",8,[7,14],[60,45,110,80,120,90],0,0,0],[827,"Nickit",8,[17],[40,28,28,47,52,50],0,0,1],[828,"Thievul",8,[17],[70,58,58,87,92,90],0,0,0],[829,"Gossifleur",8,[12],[40,40,60,40,60,10],0,0,1],[830,"Eldegoss",8,[12],[60,50,90,80,120,60],0,0,0],[831,"Wooloo",8,[1],[42,40,55,40,45,48],0,0,1],[832,"Dubwool",8,[1],[72,80,100,60,90,88],0,0,0],[833,"Chewtle",8,[11],[50,64,50,38,38,44],0,0,1],[834,"Drednaw",8,[11,6],[90,115,90,48,68,74],0,0,0],[835,"Yamper",8,[13],[59,45,50,40,50,26],0,0,1],[836,"Boltund",8,[13],[69,90,60,90,60,121],0,0,0],[837,"Rolycoly",8,[6],[30,40,50,40,50,30],0,0,1],[838,"Carkol",8,[6,10],[80,60,90,60,70,50],0,0,1],[839,"Coalossal",8,[6,10],[110,80,120,80,90,30],0,0,0],[840,"Applin",8,[12,16],[40,40,80,40,40,20],0,0,1],[841,"Flapple",8,[12,16],[70,110,80,95,60,70],0,0,0],[842,"Appletun",8,[12,16],[110,85,80,100,80,30],0,0,0],[843,"Silicobra",8,[5],[52,57,75,35,50,46],0,0,1],[844,"Sandaconda",8,[5],[72,107,125,65,70,71],0,0,0],[845,"Cramorant",8,[3,11],[70,85,55,85,95,85],0,0,0],[846,"Arrokuda",8,[11],[41,63,40,40,30,66],0,0,1],[847,"Barraskewda",8,[11],[61,123,60,60,50,136],0,0,0],[848,"Toxel",8,[13,4],[40,38,35,54,35,40],0,0,1],[849,"Toxtricity",8,[13,4],[75,98,70,114,70,75],0,0,0],[850,"Sizzlipede",8,[10,7],[50,65,45,50,50,45],0,0,1],[851,"Centiskorch",8,[10,7],[100,115,65,90,90,65],0,0,0],[852,"Clobbopus",8,[2],[50,68,60,50,50,32],0,0,1],[853,"Grapploct",8,[2],[80,118,90,70,80,42],0,0,0],[854,"Sinistea",8,[8],[40,45,45,74,54,50],0,0,1],[855,"Polteageist",8,[8],[60,65,65,134,114,70],0,0,0],[856,"Hatenna",8,[14],[42,30,45,56,53,39],0,0,1],[857,"Hattrem",8,[14],[57,40,65,86,73,49],0,0,1],[858,"Hatterene",8,[14,18],[57,90,95,136,103,29],0,0,0],[859,"Impidimp",8,[17,18],[45,45,30,55,40,50],0,0,1],[860,"Morgrem",8,[17,18],[65,60,45,75,55,70],0,0,1],[861,"Grimmsnarl",8,[17,18],[95,120,65,95,75,60],0,0,0],[862,"Obstagoon",8,[17,1],[93,90,101,60,81,95],0,0,0],[863,"Perrserker",8,[9],[70,110,100,50,60,50],0,0,0],[864,"Cursola",8,[8],[60,95,50,145,130,30],0,0,0],[865,"Sirfetch’d",8,[2],[62,135,95,68,82,65],0,0,0],[866,"Mr. Rime",8,[15,14],[80,85,75,110,100,70],0,0,0],[867,"Runerigus",8,[5,8],[58,95,145,50,105,30],0,0,0],[868,"Milcery",8,[18],[45,40,40,50,61,34],0,0,1],[869,"Alcremie",8,[18],[65,60,75,110,121,64],0,0,0],[870,"Falinks",8,[2],[65,100,100,70,60,75],0,0,0],[871,"Pincurchin",8,[13],[48,101,95,91,85,15],0,0,0],[872,"Snom",8,[15,7],[30,25,35,45,30,20],0,0,1],[873,"Frosmoth",8,[15,7],[70,65,60,125,90,65],0,0,0],[874,"Stonjourner",8,[6],[100,125,135,20,20,70],0,0,0],[875,"Eiscue",8,[15],[75,80,110,65,90,50],0,0,0],[876,"Indeedee",8,[14,1],[60,65,55,105,95,95],0,0,0],[877,"Morpeko",8,[13,17],[58,95,58,70,58,97],0,0,0],[878,"Cufant",8,[9],[72,80,49,40,49,40],0,0,1],[879,"Copperajah",8,[9],[122,130,69,80,69,30],0,0,0],[880,"Dracozolt",8,[13,16],[90,100,90,80,70,75],0,0,0],[881,"Arctozolt",8,[13,15],[90,100,90,90,80,55],0,0,0],[882,"Dracovish",8,[11,16],[90,90,100,70,80,75],0,0,0],[883,"Arctovish",8,[11,15],[90,90,100,80,90,55],0,0,0],[884,"Duraludon",8,[9,16],[70,95,115,120,50,85],0,0,1],[885,"Dreepy",8,[16,8],[28,60,30,40,30,82],0,0,1],[886,"Drakloak",8,[16,8],[68,80,50,60,50,102],0,0,1],[887,"Dragapult",8,[16,8],[88,120,75,100,75,142],0,0,0],[888,"Zacian",8,[18],[92,120,115,80,115,138],1,0,0],[889,"Zamazenta",8,[2],[92,120,115,80,115,138],1,0,0],[890,"Eternatus",8,[4,16],[140,85,95,145,95,130],1,0,0],[891,"Kubfu",8,[2],[60,90,60,53,50,72],1,0,1],[892,"Urshifu",8,[2,17],[100,130,100,63,60,97],1,0,0],[893,"Zarude",8,[17,12],[105,120,105,70,95,105],2,0,0],[894,"Regieleki",8,[13],[80,100,50,100,50,200],1,0,0],[895,"Regidrago",8,[16],[200,100,50,100,50,80],1,0,0],[896,"Glastrier",8,[15],[100,145,130,65,110,30],1,0,0],[897,"Spectrier",8,[8],[100,65,60,145,80,130],1,0,0],[898,"Calyrex",8,[14,12],[100,80,80,80,80,80],1,0,0],[899,"Wyrdeer",8,[1,14],[103,105,72,105,75,65],0,0,0],[900,"Kleavor",8,[7,6],[70,135,95,45,70,85],0,0,0],[901,"Ursaluna",8,[5,1],[130,140,105,45,80,50],0,0,0],[902,"Basculegion",8,[11,8],[120,112,65,80,75,78],0,0,0],[903,"Sneasler",8,[2,4],[80,130,60,40,80,120],0,0,0],[904,"Overqwil",8,[17,4],[85,115,95,65,65,85],0,0,0],[905,"Enamorus",8,[18,3],[74,115,70,135,80,106],1,0,0],[906,"Sprigatito",9,[12],[40,61,54,45,45,65],0,0,1],[907,"Floragato",9,[12],[61,80,63,60,63,83],0,0,1],[908,"Meowscarada",9,[12,17],[76,110,70,81,70,123],0,0,0],[909,"Fuecoco",9,[10],[67,45,59,63,40,36],0,0,1],[910,"Crocalor",9,[10],[81,55,78,90,58,49],0,0,1],[911,"Skeledirge",9,[10,8],[104,75,100,110,75,66],0,0,0],[912,"Quaxly",9,[11],[55,65,45,50,45,50],0,0,1],[913,"Quaxwell",9,[11],[70,85,65,65,60,65],0,0,1],[914,"Quaquaval",9,[11,2],[85,120,80,85,75,85],0,0,0],[915,"Lechonk",9,[1],[54,45,40,35,45,35],0,0,1],[916,"Oinkologne",9,[1],[110,100,75,59,80,65],0,0,0],[917,"Tarountula",9,[7],[35,41,45,29,40,20],0,0,1],[918,"Spidops",9,[7],[60,79,92,52,86,35],0,0,0],[919,"Nymble",9,[7],[33,46,40,21,25,45],0,0,1],[920,"Lokix",9,[7,17],[71,102,78,52,55,92],0,0,0],[921,"Pawmi",9,[13],[45,50,20,40,25,60],0,0,1],[922,"Pawmo",9,[13,2],[60,75,40,50,40,85],0,0,1],[923,"Pawmot",9,[13,2],[70,115,70,70,60,105],0,0,0],[924,"Tandemaus",9,[1],[50,50,45,40,45,75],0,0,1],[925,"Maushold",9,[1],[74,75,70,65,75,111],0,0,0],[926,"Fidough",9,[18],[37,55,70,30,55,65],0,0,1],[927,"Dachsbun",9,[18],[57,80,115,50,80,95],0,0,0],[928,"Smoliv",9,[12,1],[41,35,45,58,51,30],0,0,1],[929,"Dolliv",9,[12,1],[52,53,60,78,78,33],0,0,1],[930,"Arboliva",9,[12,1],[78,69,90,125,109,39],0,0,0],[931,"Squawkabilly",9,[1,3],[82,96,51,45,51,92],0,0,0],[932,"Nacli",9,[6],[55,55,75,35,35,25],0,0,1],[933,"Naclstack",9,[6],[60,60,100,35,65,35],0,0,1],[934,"Garganacl",9,[6],[100,100,130,45,90,35],0,0,0],[935,"Charcadet",9,[10],[40,50,40,50,40,35],0,0,1],[936,"Armarouge",9,[10,14],[85,60,100,125,80,75],0,0,0],[937,"Ceruledge",9,[10,8],[75,125,80,60,100,85],0,0,0],[938,"Tadbulb",9,[13],[61,31,41,59,35,45],0,0,1],[939,"Bellibolt",9,[13],[109,64,91,103,83,45],0,0,0],[940,"Wattrel",9,[13,3],[40,40,35,55,40,70],0,0,1],[941,"Kilowattrel",9,[13,3],[70,70,60,105,60,125],0,0,0],[942,"Maschiff",9,[17],[60,78,60,40,51,51],0,0,1],[943,"Mabosstiff",9,[17],[80,120,90,60,70,85],0,0,0],[944,"Shroodle",9,[4,1],[40,65,35,40,35,75],0,0,1],[945,"Grafaiai",9,[4,1],[63,95,65,80,72,110],0,0,0],[946,"Bramblin",9,[12,8],[40,65,30,45,35,60],0,0,1],[947,"Brambleghast",9,[12,8],[55,115,70,80,70,90],0,0,0],[948,"Toedscool",9,[5,12],[40,40,35,50,100,70],0,0,1],[949,"Toedscruel",9,[5,12],[80,70,65,80,120,100],0,0,0],[950,"Klawf",9,[6],[70,100,115,35,55,75],0,0,0],[951,"Capsakid",9,[12],[50,62,40,62,40,50],0,0,1],[952,"Scovillain",9,[12,10],[65,108,65,108,65,75],0,0,0],[953,"Rellor",9,[7],[41,50,60,31,58,30],0,0,1],[954,"Rabsca",9,[7,14],[75,50,85,115,100,45],0,0,0],[955,"Flittle",9,[14],[30,35,30,55,30,75],0,0,1],[956,"Espathra",9,[14],[95,60,60,101,60,105],0,0,0],[957,"Tinkatink",9,[18,9],[50,45,45,35,64,58],0,0,1],[958,"Tinkatuff",9,[18,9],[65,55,55,45,82,78],0,0,1],[959,"Tinkaton",9,[18,9],[85,75,77,70,105,94],0,0,0],[960,"Wiglett",9,[11],[10,55,25,35,25,95],0,0,1],[961,"Wugtrio",9,[11],[35,100,50,50,70,120],0,0,0],[962,"Bombirdier",9,[3,17],[70,103,85,60,85,82],0,0,0],[963,"Finizen",9,[11],[70,45,40,45,40,75],0,0,1],[964,"Palafin",9,[11],[100,70,72,53,62,100],0,0,0],[965,"Varoom",9,[9,4],[45,70,63,30,45,47],0,0,1],[966,"Revavroom",9,[9,4],[80,119,90,54,67,90],0,0,0],[967,"Cyclizar",9,[16,1],[70,95,65,85,65,121],0,0,0],[968,"Orthworm",9,[9],[70,85,145,60,55,65],0,0,0],[969,"Glimmet",9,[6,4],[48,35,42,105,60,60],0,0,1],[970,"Glimmora",9,[6,4],[83,55,90,130,81,86],0,0,0],[971,"Greavard",9,[8],[50,61,60,30,55,34],0,0,1],[972,"Houndstone",9,[8],[72,101,100,50,97,68],0,0,0],[973,"Flamigo",9,[3,2],[82,115,74,75,64,90],0,0,0],[974,"Cetoddle",9,[15],[108,68,45,30,40,43],0,0,1],[975,"Cetitan",9,[15],[170,113,65,45,55,73],0,0,0],[976,"Veluza",9,[11,14],[90,102,73,78,65,70],0,0,0],[977,"Dondozo",9,[11],[150,100,115,65,65,35],0,0,0],[978,"Tatsugiri",9,[16,11],[68,50,60,120,95,82],0,0,0],[979,"Annihilape",9,[2,8],[110,115,80,50,90,90],0,0,0],[980,"Clodsire",9,[4,5],[130,75,60,45,100,20],0,0,0],[981,"Farigiraf",9,[1,14],[120,90,70,110,70,60],0,0,0],[982,"Dudunsparce",9,[1],[125,100,80,85,75,55],0,0,0],[983,"Kingambit",9,[17,9],[100,135,120,60,85,50],0,0,0],[984,"Colmilargo",9,[5,2],[115,131,131,53,53,87],0,0,0],[985,"Colagrito",9,[18,14],[115,65,99,65,115,111],0,0,0],[986,"Furioseta",9,[12,17],[111,127,99,79,99,55],0,0,0],[987,"Melenaleteo",9,[8,18],[55,55,55,135,135,135],0,0,0],[988,"Reptalada",9,[7,2],[85,135,79,85,105,81],0,0,0],[989,"Pelarena",9,[13,5],[85,81,97,121,85,101],0,0,0],[990,"Ferrodada",9,[5,9],[90,112,120,72,70,106],0,0,0],[991,"Ferrosaco",9,[15,11],[56,80,114,124,60,136],0,0,0],[992,"Ferropalmas",9,[2,13],[154,140,108,50,68,50],0,0,0],[993,"Ferrocuello",9,[17,3],[94,80,86,122,80,108],0,0,0],[994,"Ferropolilla",9,[10,4],[80,70,60,140,110,110],0,0,0],[995,"Ferropúas",9,[6,13],[100,134,110,70,84,72],0,0,0],[996,"Frigibax",9,[16,15],[65,75,45,35,45,55],0,0,1],[997,"Arctibax",9,[16,15],[90,95,66,45,65,62],0,0,1],[998,"Baxcalibur",9,[16,15],[115,145,92,75,86,87],0,0,0],[999,"Gimmighoul",9,[8],[45,30,70,75,70,10],0,0,1],[1000,"Gholdengo",9,[9,8],[87,60,95,133,91,84],0,0,0],[1001,"Wo-Chien",9,[17,12],[85,85,100,95,135,70],1,0,0],[1002,"Chien-Pao",9,[17,15],[80,120,80,90,65,135],1,0,0],[1003,"Ting-Lu",9,[17,5],[155,110,125,55,80,45],1,0,0],[1004,"Chi-Yu",9,[17,10],[55,80,80,135,120,100],1,0,0],[1005,"Bramaluna",9,[16,17],[105,139,71,55,101,119],0,0,0],[1006,"Ferropaladín",9,[18,2],[74,130,90,120,60,116],0,0,0],[1007,"Koraidon",9,[2,16],[100,135,115,85,100,135],1,0,0],[1008,"Miraidon",9,[13,16],[100,85,100,135,115,135],1,0,0],[1009,"Ondulagua",9,[11,16],[99,83,91,125,83,109],0,0,0],[1010,"Ferroverdor",9,[12,14],[90,130,88,70,108,104],0,0,0],[1011,"Dipplin",9,[12,16],[80,80,110,95,80,40],0,0,1],[1012,"Poltchageist",9,[12,8],[40,45,45,74,54,50],0,0,1],[1013,"Sinistcha",9,[12,8],[71,60,106,121,80,70],0,0,0],[1014,"Okidogi",9,[4,2],[88,128,115,58,86,80],1,0,0],[1015,"Munkidori",9,[4,14],[88,75,66,130,90,106],1,0,0],[1016,"Fezandipiti",9,[4,18],[88,91,82,70,125,99],1,0,0],[1017,"Ogerpon",9,[12],[80,120,84,60,96,110],1,0,0],[1018,"Archaludon",9,[9,16],[90,105,130,125,65,85],0,0,0],[1019,"Hydrapple",9,[12,16],[106,80,110,120,80,44],0,0,0],[1020,"Flamariete",9,[10,16],[105,115,121,65,93,91],0,0,0],[1021,"Electrofuria",9,[13,16],[125,73,91,137,89,75],0,0,0],[1022,"Ferromole",9,[6,14],[90,120,80,68,108,124],0,0,0],[1023,"Ferrotesta",9,[9,14],[90,72,100,122,108,98],0,0,0],[1024,"Terapagos",9,[1],[90,65,85,65,85,60],1,0,0],[1025,"Pecharunt",9,[4,8],[88,88,160,88,88,88],2,0,0],[10001,"Deoxys (Attack)",3,[14],[50,180,20,180,20,150],2,1,0],[10002,"Deoxys (Defense)",3,[14],[50,70,160,70,160,90],2,1,0],[10003,"Deoxys (Speed)",3,[14],[50,95,90,95,90,180],2,1,0],[10004,"Wormadam (Sandy)",4,[7,5],[60,79,105,59,85,36],0,1,0],[10005,"Wormadam (Trash)",4,[7,9],[60,69,95,69,95,36],0,1,0],[10006,"Shaymin (Sky)",4,[12,3],[100,103,75,120,75,127],2,1,0],[10007,"Giratina (Origin)",4,[8,16],[150,120,100,120,100,90],1,1,0],[10008,"Rotom (Heat)",4,[13,10],[50,65,107,105,107,86],0,1,0],[10009,"Rotom (Wash)",4,[13,11],[50,65,107,105,107,86],0,1,0],[10010,"Rotom (Frost)",4,[13,15],[50,65,107,105,107,86],0,1,0],[10011,"Rotom (Fan)",4,[13,3],[50,65,107,105,107,86],0,1,0],[10012,"Rotom (Mow)",4,[13,12],[50,65,107,105,107,86],0,1,0],[10013,"Castform (Sunny)",3,[10],[70,70,70,70,70,70],0,1,0],[10014,"Castform (Rainy)",3,[11],[70,70,70,70,70,70],0,1,0],[10015,"Castform (Snowy)",3,[15],[70,70,70,70,70,70],0,1,0],[10016,"Basculin (Blue Striped)",5,[11],[70,92,65,80,55,98],0,1,1],[10017,"Darmanitan (Zen)",5,[10,14],[105,30,105,140,105,55],0,1,0],[10018,"Meloetta (Pirouette)",5,[1,2],[100,128,90,77,77,128],2,1,0],[10019,"Tornadus (Therian)",5,[3],[79,100,80,110,90,121],1,1,0],[10020,"Thundurus (Therian)",5,[13,3],[79,105,70,145,80,101],1,1,0],[10021,"Landorus (Therian)",5,[5,3],[89,145,90,105,80,91],1,1,0],[10022,"Kyurem (Black)",5,[16,15],[125,170,100,120,90,95],1,1,0],[10023,"Kyurem (White)",5,[16,15],[125,120,90,170,100,95],1,1,0],[10024,"Keldeo (Resolute)",5,[11,2],[91,72,90,129,90,108],2,1,0],[10025,"Meowstic (Female)",6,[14],[74,48,76,83,81,104],0,1,0],[10026,"Aegislash (Blade)",6,[9,8],[60,140,50,140,50,60],0,1,0],[10027,"Pumpkaboo (Small)",6,[8,12],[44,66,70,44,55,56],0,1,1],[10028,"Pumpkaboo (Large)",6,[8,12],[54,66,70,44,55,46],0,1,1],[10029,"Pumpkaboo (Super)",6,[8,12],[59,66,70,44,55,41],0,1,1],[10030,"Gourgeist (Small)",6,[8,12],[55,85,122,58,75,99],0,1,0],[10031,"Gourgeist (Large)",6,[8,12],[75,95,122,58,75,69],0,1,0],[10032,"Gourgeist (Super)",6,[8,12],[85,100,122,58,75,54],0,1,0],[10033,"Venusaur (Mega)",1,[12,4],[80,100,123,122,120,80],0,1,0],[10034,"Charizard (Mega X)",1,[10,16],[78,130,111,130,85,100],0,1,0],[10035,"Charizard (Mega Y)",1,[10,3],[78,104,78,159,115,100],0,1,0],[10036,"Blastoise (Mega)",1,[11],[79,103,120,135,115,78],0,1,0],[10037,"Alakazam (Mega)",1,[14],[55,50,65,175,105,150],0,1,0],[10038,"Gengar (Mega)",1,[8,4],[60,65,80,170,95,130],0,1,0],[10039,"Kangaskhan (Mega)",1,[1],[105,125,100,60,100,100],0,1,0],[10040,"Pinsir (Mega)",1,[7,3],[65,155,120,65,90,105],0,1,0],[10041,"Gyarados (Mega)",1,[11,17],[95,155,109,70,130,81],0,1,0],[10042,"Aerodactyl (Mega)",1,[6,3],[80,135,85,70,95,150],0,1,0],[10043,"Mewtwo (Mega X)",1,[14,2],[106,190,100,154,100,130],1,1,0],[10044,"Mewtwo (Mega Y)",1,[14],[106,150,70,194,120,140],1,1,0],[10045,"Ampharos (Mega)",2,[13,16],[90,95,105,165,110,45],0,1,0],[10046,"Scizor (Mega)",2,[7,9],[70,150,140,65,100,75],0,1,0],[10047,"Heracross (Mega)",2,[7,2],[80,185,115,40,105,75],0,1,0],[10048,"Houndoom (Mega)",2,[17,10],[75,90,90,140,90,115],0,1,0],[10049,"Tyranitar (Mega)",2,[6,17],[100,164,150,95,120,71],0,1,0],[10050,"Blaziken (Mega)",3,[10,2],[80,160,80,130,80,100],0,1,0],[10051,"Gardevoir (Mega)",3,[14,18],[68,85,65,165,135,100],0,1,0],[10052,"Mawile (Mega)",3,[9,18],[50,105,125,55,95,50],0,1,0],[10053,"Aggron (Mega)",3,[9],[70,140,230,60,80,50],0,1,0],[10054,"Medicham (Mega)",3,[2,14],[60,100,85,80,85,100],0,1,0],[10055,"Manectric (Mega)",3,[13],[70,75,80,135,80,135],0,1,0],[10056,"Banette (Mega)",3,[8],[64,165,75,93,83,75],0,1,0],[10057,"Absol (Mega)",3,[17],[65,150,60,115,60,115],0,1,0],[10058,"Garchomp (Mega)",4,[16,5],[108,170,115,120,95,92],0,1,0],[10059,"Lucario (Mega)",4,[2,9],[70,145,88,140,70,112],0,1,0],[10060,"Abomasnow (Mega)",4,[12,15],[90,132,105,132,105,30],0,1,0],[10061,"Floette (Eternal)",6,[18],[74,65,67,125,128,92],0,1,1],[10062,"Latias (Mega)",3,[16,14],[80,100,120,140,150,110],1,1,0],[10063,"Latios (Mega)",3,[16,14],[80,130,100,160,120,110],1,1,0],[10064,"Swampert (Mega)",3,[11,5],[100,150,110,95,110,70],0,1,0],[10065,"Sceptile (Mega)",3,[12,16],[70,110,75,145,85,145],0,1,0],[10066,"Sableye (Mega)",3,[17,8],[50,85,125,85,115,20],0,1,0],[10067,"Altaria (Mega)",3,[16,18],[75,110,110,110,105,80],0,1,0],[10068,"Gallade (Mega)",4,[14,2],[68,165,95,65,115,110],0,1,0],[10069,"Audino (Mega)",5,[1,18],[103,60,126,80,126,50],0,1,0],[10070,"Sharpedo (Mega)",3,[11,17],[70,140,70,110,65,105],0,1,0],[10071,"Slowbro (Mega)",1,[11,14],[95,75,180,130,80,30],0,1,0],[10072,"Steelix (Mega)",2,[9,5],[75,125,230,55,95,30],0,1,0],[10073,"Pidgeot (Mega)",1,[1,3],[83,80,80,135,80,121],0,1,0],[10074,"Glalie (Mega)",3,[15],[80,120,80,120,80,100],0,1,0],[10075,"Diancie (Mega)",6,[6,18],[50,160,110,160,110,110],2,1,0],[10076,"Metagross (Mega)",3,[9,14],[80,145,150,105,110,110],0,1,0],[10077,"Kyogre (Primal)",3,[11],[100,150,90,180,160,90],1,1,0],[10078,"Groudon (Primal)",3,[5,10],[100,180,160,150,90,90],1,1,0],[10079,"Rayquaza (Mega)",3,[16,3],[105,180,100,180,100,115],1,1,0],[10080,"Pikachu (Rock Star)",1,[13],[35,55,40,50,50,90],0,1,1],[10081,"Pikachu (Belle)",1,[13],[35,55,40,50,50,90],0,1,1],[10082,"Pikachu (Pop Star)",1,[13],[35,55,40,50,50,90],0,1,1],[10083,"Pikachu (Phd)",1,[13],[35,55,40,50,50,90],0,1,1],[10084,"Pikachu (Libre)",1,[13],[35,55,40,50,50,90],0,1,1],[10085,"Pikachu (Cosplay)",1,[13],[35,55,40,50,50,90],0,1,1],[10086,"Hoopa (Unbound)",6,[14,17],[80,160,60,170,130,80],2,1,0],[10087,"Camerupt (Mega)",3,[10,5],[70,120,100,145,105,20],0,1,0],[10088,"Lopunny (Mega)",4,[1,2],[65,136,94,54,96,135],0,1,0],[10089,"Salamence (Mega)",3,[16,3],[95,145,130,120,90,120],0,1,0],[10090,"Beedrill (Mega)",1,[7,4],[65,150,40,15,80,145],0,1,0],[10091,"Rattata (Alola)",1,[17,1],[30,56,35,25,35,72],0,1,1],[10092,"Raticate (Alola)",1,[17,1],[75,71,70,40,80,77],0,1,0],[10100,"Raichu (Alola)",1,[13,14],[60,85,50,95,85,110],0,1,0],[10101,"Sandshrew (Alola)",1,[15,9],[50,75,90,10,35,40],0,1,1],[10102,"Sandslash (Alola)",1,[15,9],[75,100,120,25,65,65],0,1,0],[10103,"Vulpix (Alola)",1,[15],[38,41,40,50,65,65],0,1,1],[10104,"Ninetales (Alola)",1,[15,18],[73,67,75,81,100,109],0,1,0],[10105,"Diglett (Alola)",1,[5,9],[10,55,30,35,45,90],0,1,1],[10106,"Dugtrio (Alola)",1,[5,9],[35,100,60,50,70,110],0,1,0],[10107,"Meowth (Alola)",1,[17],[40,35,35,50,40,90],0,1,1],[10108,"Persian (Alola)",1,[17],[65,60,60,75,65,115],0,1,0],[10109,"Geodude (Alola)",1,[6,13],[40,80,100,30,30,20],0,1,1],[10110,"Graveler (Alola)",1,[6,13],[55,95,115,45,45,35],0,1,1],[10111,"Golem (Alola)",1,[6,13],[80,120,130,55,65,45],0,1,0],[10112,"Grimer (Alola)",1,[4,17],[80,80,50,40,50,25],0,1,1],[10113,"Muk (Alola)",1,[4,17],[105,105,75,65,100,50],0,1,0],[10114,"Exeggutor (Alola)",1,[12,16],[95,105,85,125,75,45],0,1,0],[10115,"Marowak (Alola)",1,[10,8],[60,80,110,50,80,45],0,1,0],[10116,"Greninja (Battle Bond)",6,[11,17],[72,95,67,103,71,122],0,1,0],[10117,"Greninja (Ash)",6,[11,17],[72,145,67,153,71,132],0,1,0],[10118,"Zygarde (10 Power Construct)",6,[16,5],[54,100,71,61,85,115],1,1,0],[10119,"Zygarde (50 Power Construct)",6,[16,5],[108,100,121,81,95,95],1,1,0],[10120,"Zygarde (Complete)",6,[16,5],[216,100,121,91,95,85],1,1,0],[10123,"Oricorio (Pom Pom)",7,[13,3],[75,70,70,98,70,93],0,1,0],[10124,"Oricorio (Pau)",7,[14,3],[75,70,70,98,70,93],0,1,0],[10125,"Oricorio (Sensu)",7,[8,3],[75,70,70,98,70,93],0,1,0],[10126,"Lycanroc (Midnight)",7,[6],[85,115,75,55,75,82],0,1,0],[10127,"Wishiwashi (School)",7,[11],[45,140,130,140,135,30],0,1,0],[10130,"Minior (Orange Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10131,"Minior (Yellow Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10132,"Minior (Green Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10133,"Minior (Blue Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10134,"Minior (Indigo Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10135,"Minior (Violet Meteor)",7,[6,3],[60,60,100,60,100,60],0,1,0],[10136,"Minior (Red)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10137,"Minior (Orange)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10138,"Minior (Yellow)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10139,"Minior (Green)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10140,"Minior (Blue)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10141,"Minior (Indigo)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10142,"Minior (Violet)",7,[6,3],[60,100,60,100,60,120],0,1,0],[10147,"Magearna (Original)",7,[9,18],[80,95,115,130,115,65],2,1,0],[10151,"Rockruff (Own Tempo)",7,[6],[45,65,40,30,40,60],0,1,1],[10152,"Lycanroc (Dusk)",7,[6],[75,117,65,55,65,110],0,1,0],[10155,"Necrozma (Dusk)",7,[14,9],[97,157,127,113,109,77],1,1,0],[10156,"Necrozma (Dawn)",7,[14,8],[97,113,109,157,127,77],1,1,0],[10157,"Necrozma (Ultra)",7,[14,16],[97,167,97,167,97,129],1,1,0],[10161,"Meowth (Galar)",1,[9],[50,65,55,40,40,40],0,1,1],[10162,"Ponyta (Galar)",1,[14],[50,85,55,65,65,90],0,1,1],[10163,"Rapidash (Galar)",1,[14,18],[65,100,70,80,80,105],0,1,0],[10164,"Slowpoke (Galar)",1,[14],[90,65,65,40,40,15],0,1,1],[10165,"Slowbro (Galar)",1,[4,14],[95,100,95,100,70,30],0,1,0],[10166,"Farfetch’d (Galar)",1,[2],[52,95,55,58,62,55],0,1,1],[10167,"Weezing (Galar)",1,[4,18],[65,90,120,85,70,60],0,1,0],[10168,"Mr. Mime (Mime Galar)",1,[15,14],[50,65,65,90,90,100],0,1,1],[10169,"Articuno (Galar)",1,[14,3],[90,85,85,125,100,95],1,1,0],[10170,"Zapdos (Galar)",1,[2,3],[90,125,90,85,90,100],1,1,0],[10171,"Moltres (Galar)",1,[17,3],[90,85,90,100,125,90],1,1,0],[10172,"Slowking (Galar)",2,[4,14],[95,65,80,110,110,30],0,1,0],[10173,"Corsola (Galar)",2,[8],[60,55,100,65,100,30],0,1,1],[10174,"Zigzagoon (Galar)",3,[17,1],[38,30,41,30,41,60],0,1,1],[10175,"Linoone (Galar)",3,[17,1],[78,70,61,50,61,100],0,1,1],[10176,"Darumaka (Galar)",5,[15],[70,90,45,15,45,50],0,1,1],[10177,"Darmanitan (Galar Standard)",5,[15],[105,140,55,30,55,95],0,1,0],[10178,"Darmanitan (Galar Zen)",5,[15,10],[105,160,55,30,55,135],0,1,0],[10179,"Yamask (Galar)",5,[5,8],[38,55,85,30,65,30],0,1,1],[10180,"Stunfisk (Galar)",5,[5,9],[109,81,99,66,84,32],0,1,0],[10181,"Zygarde (10)",6,[16,5],[54,100,71,61,85,115],1,1,0],[10182,"Cramorant (Gulping)",8,[3,11],[70,85,55,85,95,85],0,1,0],[10183,"Cramorant (Gorging)",8,[3,11],[70,85,55,85,95,85],0,1,0],[10184,"Toxtricity (Low Key)",8,[13,4],[75,98,70,114,70,75],0,1,0],[10185,"Eiscue (Noice)",8,[15],[75,80,70,65,50,130],0,1,0],[10186,"Indeedee (Female)",8,[14,1],[70,55,65,95,105,85],0,1,0],[10187,"Morpeko (Hangry)",8,[13,17],[58,95,58,70,58,97],0,1,0],[10188,"Zacian (Crowned)",8,[18,9],[92,150,115,80,115,148],1,1,0],[10189,"Zamazenta (Crowned)",8,[2,9],[92,120,140,80,140,128],1,1,0],[10191,"Urshifu (Rapid Strike)",8,[2,11],[100,130,100,63,60,97],1,1,0],[10192,"Zarude (Dada)",8,[17,12],[105,120,105,70,95,105],2,1,0],[10193,"Calyrex (Ice)",8,[14,15],[100,165,150,85,130,50],1,1,0],[10194,"Calyrex (Shadow)",8,[14,8],[100,85,80,165,100,150],1,1,0],[10229,"Growlithe (Hisui)",1,[10,6],[60,75,45,65,50,55],0,1,1],[10230,"Arcanine (Hisui)",1,[10,6],[95,115,80,95,80,90],0,1,0],[10231,"Voltorb (Hisui)",1,[13,12],[40,30,50,55,55,100],0,1,1],[10232,"Electrode (Hisui)",1,[13,12],[60,50,70,80,80,150],0,1,0],[10233,"Typhlosion (Hisui)",2,[10,8],[73,84,78,119,85,95],0,1,0],[10234,"Qwilfish (Hisui)",2,[17,4],[65,95,85,55,55,85],0,1,1],[10235,"Sneasel (Hisui)",2,[2,4],[55,95,55,35,75,115],0,1,1],[10236,"Samurott (Hisui)",5,[11,17],[90,108,80,100,65,85],0,1,0],[10237,"Lilligant (Hisui)",5,[12,2],[70,105,75,50,75,105],0,1,0],[10238,"Zorua (Hisui)",5,[1,8],[35,60,40,85,40,70],0,1,1],[10239,"Zoroark (Hisui)",5,[1,8],[55,100,60,125,60,110],0,1,0],[10240,"Braviary (Hisui)",5,[14,3],[110,83,70,112,70,65],0,1,0],[10241,"Sliggoo (Hisui)",6,[9,16],[58,75,83,83,113,40],0,1,1],[10242,"Goodra (Hisui)",6,[9,16],[80,100,100,110,150,60],0,1,0],[10243,"Avalugg (Hisui)",6,[15,6],[95,127,184,34,36,38],0,1,0],[10244,"Decidueye (Hisui)",7,[12,2],[88,112,80,95,95,60],0,1,0],[10245,"Dialga (Origin)",4,[9,16],[100,100,120,150,120,90],1,1,0],[10246,"Palkia (Origin)",4,[11,16],[90,100,100,150,120,120],1,1,0],[10247,"Basculin (White Striped)",5,[11],[70,92,65,80,55,98],0,1,1],[10248,"Basculegion (Female)",8,[11,8],[120,92,65,100,75,78],0,1,0],[10249,"Enamorus (Therian)",8,[18,3],[74,115,110,135,100,46],1,1,0],[10250,"Tauros (Paldea Combat Breed)",1,[2],[75,110,105,30,70,100],0,1,0],[10251,"Tauros (Paldea Blaze Breed)",1,[2,10],[75,110,105,30,70,100],0,1,0],[10252,"Tauros (Paldea Aqua Breed)",1,[2,11],[75,110,105,30,70,100],0,1,0],[10253,"Wooper (Paldea)",2,[4,5],[55,45,45,25,25,15],0,1,1],[10254,"Oinkologne (Female)",9,[1],[115,90,70,59,90,65],0,1,0],[10255,"Dudunsparce (Three Segment)",9,[1],[125,100,80,85,75,55],0,1,0],[10256,"Palafin (Hero)",9,[11],[100,160,97,106,87,100],0,1,0],[10257,"Maushold (Family Of Three)",9,[1],[74,75,70,65,75,111],0,1,0],[10258,"Tatsugiri (Droopy)",9,[16,11],[68,50,60,120,95,82],0,1,0],[10259,"Tatsugiri (Stretchy)",9,[16,11],[68,50,60,120,95,82],0,1,0],[10260,"Squawkabilly (Blue Plumage)",9,[1,3],[82,96,51,45,51,92],0,1,0],[10261,"Squawkabilly (Yellow Plumage)",9,[1,3],[82,96,51,45,51,92],0,1,0],[10262,"Squawkabilly (White Plumage)",9,[1,3],[82,96,51,45,51,92],0,1,0],[10263,"Gimmighoul (Roaming)",9,[8],[45,30,25,75,45,80],0,1,1],[10264,"Koraidon (Limited Build)",9,[2,16],[100,135,115,85,100,135],1,1,0],[10265,"Koraidon (Sprinting Build)",9,[2,16],[100,135,115,85,100,135],1,1,0],[10266,"Koraidon (Swimming Build)",9,[2,16],[100,135,115,85,100,135],1,1,0],[10267,"Koraidon (Gliding Build)",9,[2,16],[100,135,115,85,100,135],1,1,0],[10268,"Miraidon (Low Power Mode)",9,[13,16],[100,85,100,135,115,135],1,1,0],[10269,"Miraidon (Drive Mode)",9,[13,16],[100,85,100,135,115,135],1,1,0],[10270,"Miraidon (Aquatic Mode)",9,[13,16],[100,85,100,135,115,135],1,1,0],[10271,"Miraidon (Glide Mode)",9,[13,16],[100,85,100,135,115,135],1,1,0],[10272,"Ursaluna (Bloodmoon)",8,[5,1],[113,70,120,135,65,52],0,1,0],[10273,"Ogerpon (Wellspring Mask)",9,[12,11],[80,120,84,60,96,110],1,1,0],[10274,"Ogerpon (Hearthflame Mask)",9,[12,10],[80,120,84,60,96,110],1,1,0],[10275,"Ogerpon (Cornerstone Mask)",9,[12,6],[80,120,84,60,96,110],1,1,0],[10276,"Terapagos (Terastal)",9,[1],[95,95,110,105,110,85],1,1,0],[10277,"Terapagos (Stellar)",9,[1],[160,105,110,130,110,85],1,1,0],[10278,"Clefable (Mega)",1,[18,3],[95,80,93,135,110,70],0,1,0],[10279,"Victreebel (Mega)",1,[12,4],[80,125,85,135,95,70],0,1,0],[10280,"Starmie (Mega)",1,[11,14],[60,100,105,130,105,120],0,1,0],[10281,"Dragonite (Mega)",1,[16,3],[91,124,115,145,125,100],0,1,0],[10282,"Meganium (Mega)",2,[12,18],[80,92,115,143,115,80],0,1,0],[10283,"Feraligatr (Mega)",2,[11,16],[85,160,125,89,93,78],0,1,0],[10284,"Skarmory (Mega)",2,[9,3],[65,140,110,40,100,110],0,1,0],[10285,"Froslass (Mega)",4,[15,8],[70,80,70,140,100,120],0,1,0],[10286,"Emboar (Mega)",5,[10,2],[110,148,75,110,110,75],0,1,0],[10287,"Excadrill (Mega)",5,[5,9],[110,165,100,65,65,103],0,1,0],[10288,"Scolipede (Mega)",5,[7,4],[60,140,149,75,99,62],0,1,0],[10289,"Scrafty (Mega)",5,[17,2],[65,130,135,55,135,68],0,1,0],[10290,"Eelektross (Mega)",5,[13],[85,145,80,135,90,80],0,1,0],[10291,"Chandelure (Mega)",5,[8,10],[60,75,110,175,110,90],0,1,0],[10292,"Chesnaught (Mega)",6,[12,2],[88,137,172,74,115,44],0,1,0],[10293,"Delphox (Mega)",6,[10,14],[75,69,72,159,125,134],0,1,0],[10294,"Greninja (Mega)",6,[11,17],[72,125,77,133,81,142],0,1,0],[10295,"Pyroar (Mega)",6,[10,1],[86,88,92,129,86,126],0,1,0],[10296,"Floette (Mega)",6,[18],[74,85,87,155,148,102],0,1,1],[10297,"Malamar (Mega)",6,[17,14],[86,102,88,98,120,88],0,1,0],[10298,"Barbaracle (Mega)",6,[6,2],[72,140,130,64,106,88],0,1,0],[10299,"Dragalge (Mega)",6,[4,16],[65,85,105,132,163,44],0,1,0],[10300,"Hawlucha (Mega)",6,[2,3],[78,137,100,74,93,118],0,1,0],[10301,"Zygarde (Mega)",6,[16,5],[216,70,91,216,85,100],1,1,0],[10302,"Drampa (Mega)",7,[1,16],[78,85,110,160,116,36],0,1,0],[10303,"Falinks (Mega)",8,[2],[65,135,135,70,65,100],0,1,0],[10304,"Raichu (Mega X)",1,[13],[60,135,95,90,95,110],0,1,0],[10305,"Raichu (Mega Y)",1,[13],[60,100,55,160,80,130],0,1,0],[10306,"Chimecho (Mega)",3,[14,9],[75,50,110,135,120,65],0,1,0],[10307,"Absol (Mega Z)",3,[17,8],[65,154,60,75,60,151],0,1,0],[10308,"Staraptor (Mega)",4,[2,3],[85,140,100,60,90,110],0,1,0],[10309,"Garchomp (Mega Z)",4,[16],[108,130,85,141,85,151],0,1,0],[10310,"Lucario (Mega Z)",4,[2,9],[70,100,70,164,70,151],0,1,0],[10311,"Heatran (Mega)",4,[10,9],[91,120,106,175,141,67],1,1,0],[10312,"Darkrai (Mega)",4,[17],[70,120,130,165,130,85],2,1,0],[10313,"Golurk (Mega)",5,[5,8],[89,159,105,70,105,55],0,1,0],[10314,"Meowstic (Male Mega)",6,[14],[74,48,76,143,101,124],0,1,0],[10315,"Crabominable (Mega)",7,[2,15],[97,157,122,62,107,33],0,1,0],[10316,"Golisopod (Mega)",7,[7,9],[75,150,175,70,120,40],0,1,0],[10317,"Magearna (Mega)",7,[9,18],[80,125,115,170,115,95],2,1,0],[10318,"Magearna (Original Mega)",7,[9,18],[80,125,115,170,115,95],2,1,0],[10319,"Zeraora (Mega)",7,[13],[88,157,75,147,80,153],2,1,0],[10320,"Scovillain (Mega)",9,[12,10],[65,138,85,138,85,75],0,1,0],[10321,"Glimmora (Mega)",9,[6,4],[83,90,105,150,96,101],0,1,0],[10322,"Tatsugiri (Curly Mega)",9,[16,11],[68,65,90,135,125,92],0,1,0],[10323,"Tatsugiri (Droopy Mega)",9,[16,11],[68,65,90,135,125,92],0,1,0],[10324,"Tatsugiri (Stretchy Mega)",9,[16,11],[68,65,90,135,125,92],0,1,0],[10325,"Baxcalibur (Mega)",9,[16,15],[115,175,117,105,101,87],0,1,0],[10326,"Meowstic (Female Mega)",6,[14],[74,48,76,143,101,124],0,1,0]];
 
-// ── LAYOUT: calculate card heights ──────────────────
-function calcCardHeight(){
-  const app = document.getElementById('app');
-  if(!app || app.style.display==='none') return 120;
-  const camera = document.getElementById('camera-area');
-  const cbar   = document.getElementById('consigna-bar');
-  const modp   = document.getElementById('mod-panel');
-  const sbar   = document.getElementById('status-bar');
-  const total  = window.innerHeight;
-  const used   = (camera ? camera.offsetHeight : 0)
-               + (cbar   ? cbar.offsetHeight   : 36)
-               + (modp && modp.style.display!=='none' ? modp.offsetHeight : 0)
-               + (sbar   ? sbar.offsetHeight   : 22);
-  const avail  = total - used - 20; // 20px total padding/gap
-  return Math.max(90, Math.floor(avail / 2) - 6);
+/* =========================================================
+   SINCRONIZACIÓN (BroadcastChannel + localStorage + Supabase)
+   ========================================================= */
+const params = new URLSearchParams(location.search);
+const IS_TV = params.has('tv');
+let room = params.get('sala') || localStorage.getItem('top10_room') || 'principal';
+let bc, sbChan, sb;
+const listeners = [];
+function connect(onMsg){
+  listeners.length = 0; listeners.push(onMsg);
+  try{ bc && bc.close(); bc = new BroadcastChannel('top10_'+room); bc.onmessage = e => onMsg(e.data); }catch(e){}
+  if (SUPABASE_KEY && window.supabase){
+    sb = sb || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    if (sbChan) sb.removeChannel(sbChan);
+    sbChan = sb.channel('top10_'+room, {config:{broadcast:{self:false}}});
+    sbChan.on('broadcast', {event:'msg'}, p => onMsg(p.payload));
+    sbChan.subscribe(s => setStatus(s === 'SUBSCRIBED', s === 'SUBSCRIBED' ? 'En línea · sala '+room : 'Conectando…'));
+  } else setStatus(true, 'Local · sala '+room);
 }
-
-function applyCardHeights(){
-  const h = calcCardHeight() + 'px';
-  document.querySelectorAll('.poke-card').forEach(c => c.style.height = h);
-  // Sprite size: about 55% of card height, max 96px
-  const cardH = calcCardHeight();
-  const spriteSize = Math.min(96, Math.floor(cardH * 0.52)) + 'px';
-  document.querySelectorAll('.card-sprite').forEach(img => {
-    img.style.width = spriteSize;
-    img.style.height = spriteSize;
-  });
+function send(msg){
+  try{ bc && bc.postMessage(msg); }catch(e){}
+  if (sbChan) sbChan.send({type:'broadcast', event:'msg', payload:msg});
 }
+window.addEventListener('storage', e => { if (e.key === 'top10_state_'+room && e.newValue && IS_TV) listeners[0] && listeners[0]({t:'state', s:JSON.parse(e.newValue)}); });
+function setStatus(ok, tx){ const d=document.getElementById('dot'), s=document.getElementById('statusTx'); if(d){d.classList.toggle('ok',ok); s.textContent=tx;} }
 
-window.addEventListener('resize', applyCardHeights);
+const tpChip = t => `<span class="tp" style="background:${TYPES[t-1][1]}">${TYPES[t-1][0]}</span>`;
+const statVal = (p, s) => s === 6 ? p[4].reduce((a,b)=>a+b,0) : p[4][s];
 
-// ── AUDIO ──────────────────────────────────────────
-let actx=null;
-function getACtx(){ if(!actx) actx=new(window.AudioContext||window.webkitAudioContext)(); return actx; }
-function playReveal(){
-  try{
-    const ctx=getACtx();
-    [523,659,784,1047].forEach((f,i)=>{
-      const o=ctx.createOscillator(), g=ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value=f; o.type='sine';
-      const t=ctx.currentTime+i*0.08;
-      g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(0.18,t+0.03);
-      g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
-      o.start(t); o.stop(t+0.3);
-    });
-  }catch(e){}
-}
-function playEnd(){
-  try{
-    const ctx=getACtx();
-    [440,349,293,220].forEach((f,i)=>{
-      const o=ctx.createOscillator(), g=ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.frequency.value=f; o.type='square';
-      const t=ctx.currentTime+i*0.15;
-      g.gain.setValueAtTime(0,t);
-      g.gain.linearRampToValueAtTime(0.1,t+0.04);
-      g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
-      o.start(t); o.stop(t+0.45);
-    });
-  }catch(e){}
-}
-
-// ── TIMER ──────────────────────────────────────────
-let timerIv=null;
-function toggleTimer(){
-  if(state.timerRunning){
-    state.timerRunning=false; state.timerEnd=null;
-    clearInterval(timerIv);
-    broadcast({type:'timer',payload:{running:false,end:null}});
-    updTimer();
-  } else {
-    const m=parseInt(document.getElementById('timer-min').value)||2;
-    state.timerEnd=Date.now()+m*60000;
-    state.timerRunning=true;
-    broadcast({type:'timer',payload:{running:true,end:state.timerEnd}});
-    startTick();
-  }
-  const b=document.getElementById('btn-timer');
-  b.textContent=state.timerRunning?'⏹ Parar':'⏱ Timer';
-  b.className=state.timerRunning?'btn-sm active':'btn-sm';
-}
-function startTick(){
-  clearInterval(timerIv);
-  timerIv=setInterval(()=>{
-    if(!state.timerRunning||!state.timerEnd){clearInterval(timerIv);return;}
-    const rem=state.timerEnd-Date.now();
-    if(rem<=0){
-      state.timerRunning=false; clearInterval(timerIv); playEnd();
-      const el=document.getElementById('timer-display');
-      el.textContent='⏰ 0:00'; el.className='timer-display danger';
-      if(mode==='mod'){const b=document.getElementById('btn-timer');b.textContent='⏱ Timer';b.className='btn-sm';}
-      return;
-    }
-    updTimer(rem);
-  },250);
-}
-function updTimer(rem){
-  const el=document.getElementById('timer-display');
-  if(!el) return;
-  if(rem===undefined){
-    if(state.timerRunning&&state.timerEnd) rem=Math.max(0,state.timerEnd-Date.now());
-    else{el.textContent='—';el.className='timer-display stopped';return;}
-  }
-  const s=Math.ceil(rem/1000),m=Math.floor(s/60),ss=s%60;
-  el.textContent=`${m}:${String(ss).padStart(2,'0')}`;
-  el.className='timer-display '+(s>30?'running':s>10?'warning':'danger');
-}
-
-// ── CONSIGNAS ──────────────────────────────────────
-const TYPES=['fire','water','grass','electric','psychic','ice','dragon','dark','fairy','fighting','flying','poison','ground','rock','bug','ghost','steel','normal'];
-const GENS=[{n:1,l:1,h:151},{n:2,l:152,h:251},{n:3,l:252,h:386},{n:4,l:387,h:493},{n:5,l:494,h:649},{n:6,l:650,h:721},{n:7,l:722,h:809},{n:8,l:810,h:905}];
-const TES={fire:'Fuego',water:'Agua',grass:'Planta',electric:'Eléctrico',psychic:'Psíquico',ice:'Hielo',dragon:'Dragón',dark:'Siniestro',fairy:'Hada',fighting:'Lucha',flying:'Volador',poison:'Veneno',ground:'Tierra',rock:'Roca',bug:'Bicho',ghost:'Fantasma',steel:'Acero',normal:'Normal'};
-const GES={1:'Gen 1',2:'Gen 2',3:'Gen 3',4:'Gen 4',5:'Gen 5',6:'Gen 6',7:'Gen 7',8:'Gen 8'};
-const STATS=[
-  {key:'speed',label:'Velocidad',dir:'desc'},
-  {key:'attack',label:'Ataque',dir:'desc'},
-  {key:'defense',label:'Defensa',dir:'desc'},
-  {key:'hp',label:'HP',dir:'desc'},
-  {key:'special-attack',label:'Ataque Especial',dir:'desc'},
-  {key:'special-defense',label:'Defensa Especial',dir:'desc'},
-  {key:'bst',label:'BST total',dir:'desc'},
-  {key:'height',label:'Altura (más altos)',dir:'desc'},
-  {key:'weight',label:'Peso (más pesados)',dir:'desc'},
-  {key:'height',label:'Altura (más bajitos)',dir:'asc'},
-  {key:'weight',label:'Peso (más livianos)',dir:'asc'},
-];
-let pool=[];
-function buildPool(){
-  const list=[];
-  const types=shuffle([...TYPES]);
-  const gens=shuffle([...GENS]);
-  for(const t of types) for(const st of shuffle([...STATS]).slice(0,4))
-    list.push({label:`Tipo ${TES[t]} — Top 10 por ${st.label}`,type:t,gen:null,stat:st});
-  for(const g of gens) for(const st of shuffle([...STATS]).slice(0,4))
-    list.push({label:`${GES[g.n]} — Top 10 por ${st.label}`,type:null,gen:g,stat:st});
-  for(const t of types.slice(0,6)) for(const g of gens.slice(0,4)){
-    const st=STATS[Math.floor(Math.random()*STATS.length)];
-    list.push({label:`Tipo ${TES[t]} en ${GES[g.n]} — Top 10 por ${st.label}`,type:t,gen:g,stat:st});
-  }
-  return shuffle(list);
-}
-
-// ── POKEAPI ────────────────────────────────────────
-const cache={};
-async function fetchForConsigna(c){
-  setLoading(true,'Consultando PokeAPI...');
-  try{
-    let entries=[];
-    if(c.type){
-      const r=await fetch(`https://pokeapi.co/api/v2/type/${c.type}`);
-      const d=await r.json();
-      entries=d.pokemon.map(p=>p.pokemon);
-    } else if(c.gen){
-      const r=await fetch(`https://pokeapi.co/api/v2/generation/${c.gen.n}`);
-      const d=await r.json();
-      entries=d.pokemon_species.map(s=>({name:s.name,url:s.url.replace('pokemon-species','pokemon')}));
-    }
-    const xid=u=>{const m=(u||'').match(/\/(\d+)\/?$/);return m?+m[1]:9999;};
-    entries=entries.filter(e=>{
-      const id=xid(e.url||'');
-      if(c.gen) return id>=c.gen.l&&id<=c.gen.h&&id<=1010;
-      return id>=1&&id<=1010;
-    });
-    setLoading(true,`Cargando ${Math.min(entries.length,300)} Pokémon...`);
-    const BATCH=40; let all=[];
-    for(let i=0;i<Math.min(entries.length,300);i+=BATCH){
-      const batch=entries.slice(i,i+BATCH);
-      const res=await Promise.allSettled(batch.map(e=>fetchOne(e)));
-      for(const r of res) if(r.status==='fulfilled'&&r.value) all.push(r.value);
-      setLoading(true,`${Math.min(i+BATCH,Math.min(entries.length,300))} / ${Math.min(entries.length,300)}`);
-    }
-    const k=c.stat.key;
-    all.sort((a,b)=>c.stat.dir==='desc'?(b[k]??0)-(a[k]??0):(a[k]??0)-(b[k]??0));
-    const top10=all.slice(0,10).map((p,i)=>({...p,rank:i+1}));
-    setLoading(false);
-    return top10;
-  }catch(e){console.error(e);setLoading(false);return[];}
-}
-async function fetchOne(entry){
-  const name=entry.name;
-  if(cache[name]) return cache[name];
-  try{
-    const url=entry.url||`https://pokeapi.co/api/v2/pokemon/${name}`;
-    const r=await fetch(url); if(!r.ok) return null;
-    const d=await r.json();
-    const stats={};
-    for(const s of d.stats) stats[s.stat.name]=s.base_stat;
-    const bst=Object.values(stats).reduce((a,b)=>a+b,0);
-    // Use PokeAPI's own sprite URL — works from any context
-    const sprite = d.sprites.front_default || '';
-    const obj={
-      id:d.id,name:d.name,sprite,
-      types:d.types.map(t=>t.type.name),
-      hp:stats['hp']||0,attack:stats['attack']||0,defense:stats['defense']||0,
-      'special-attack':stats['special-attack']||0,'special-defense':stats['special-defense']||0,
-      speed:stats['speed']||0,bst,height:d.height,weight:d.weight
-    };
-    cache[name]=obj; return obj;
-  }catch{return null;}
-}
-
-// ── RENDER ─────────────────────────────────────────
-function renderCards(){
-  ['row1','row2'].forEach(id=>document.getElementById(id).innerHTML='');
-  const isMod=mode==='mod';
-  const cardH=calcCardHeight();
-  const spriteSize=Math.min(96,Math.floor(cardH*0.52));
-
-  state.pokemon.forEach((p,i)=>{
-    const isRev=!!state.revealed[i];
-    const row=i<5?'row1':'row2';
-    const card=document.createElement('div');
-    card.id=`card-${i}`;
-    card.style.height=cardH+'px';
-
-    const sk=state.consigna?.stat?.key||'speed';
-    const sl=state.consigna?.stat?.label||'';
-    const sv=fmtStat(p[sk],sk);
-    const spriteUrl=p.sprite||`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`;
-
-    if(isMod){
-      // Mod always sees the pokemon — dimmed if not revealed yet
-      card.className='poke-card '+(isRev?'revealed':'mod-hidden');
-      card.innerHTML=`
-        <span class="card-pos">#${p.rank}</span>
-        <img class="card-sprite" src="${spriteUrl}"
-             style="width:${spriteSize}px;height:${spriteSize}px"
-             onerror="this.style.display='none'"
-             alt="${p.name}">
-        <span class="card-name">${p.name}</span>
-        <div class="card-types">${p.types.map(t=>`<span class="type-badge t-${t}">${t}</span>`).join('')}</div>
-        <span class="card-val">${sl}: ${sv}</span>
-        ${isRev
-          ? `<button class="mod-card-btn done">✓ Revelado</button>`
-          : `<button class="mod-card-btn" onclick="revealCard(${i})">▶ Revelar</button>`
-        }
-      `;
-    } else {
-      // Spectator: pokeball until revealed
-      if(isRev){
-        card.className='poke-card revealed';
-        card.innerHTML=`
-          <span class="card-pos">#${p.rank}</span>
-          <img class="card-sprite" src="${spriteUrl}"
-               style="width:${spriteSize}px;height:${spriteSize}px"
-               onerror="this.style.display='none'"
-               alt="${p.name}">
-          <span class="card-name">${p.name}</span>
-          <div class="card-types">${p.types.map(t=>`<span class="type-badge t-${t}">${t}</span>`).join('')}</div>
-          <span class="card-val">${sl}: ${sv}</span>
-        `;
-      } else {
-        card.className='poke-card hidden-card';
-        card.innerHTML=`
-          <div class="card-rank">${p.rank}</div>
-          <div class="card-pokeball"></div>
-        `;
+/* =========================================================
+   VISTA TV
+   ========================================================= */
+function initTV(){
+  document.getElementById('tv').classList.remove('hidden');
+  document.getElementById('tvFoot').textContent = 'Sala ' + room;
+  let last = null;
+  const render = s => {
+    const board = document.getElementById('board');
+    document.getElementById('tvTitle').textContent = s ? s.title : 'Esperando al panel…';
+    document.getElementById('tvTags').innerHTML = s ? s.tags.map(t=>`<span>${t}</span>`).join('') : '';
+    const sameSet = last && s && last.key === s.key;
+    if (!sameSet){
+      board.innerHTML = '';
+      for (let i=0;i<TOP_N;i++){
+        const e = s && s.entries[i];
+        board.insertAdjacentHTML('beforeend', `<div class="slot" data-i="${i}"><div class="card">
+          <div class="face front"><div class="n">${i+1}</div><div class="bars"></div></div>
+          <div class="face back">${e?`<div class="n">${i+1}</div><img src="${SPRITE(e.id)}" alt=""><div class="info"><div class="nm">${e.name}</div><div class="tps">${e.types.map(tpChip).join('')}</div></div><div class="v">${e.value}</div>`:''}</div>
+        </div></div>`);
       }
     }
-    document.getElementById(row).appendChild(card);
-  });
-  updConsigna();
-  renderScore();
+    board.querySelectorAll('.slot').forEach((el,i)=> el.classList.toggle('open', !!(s && s.revealed[i] && s.entries[i])));
+    last = s;
+  };
+  render(null);
+  connect(m => { if (m.t === 'state') render(m.s); });
+  try{ const saved = localStorage.getItem('top10_state_'+room); if (saved) render(JSON.parse(saved)); }catch(e){}
+  const hello = () => send({t:'hello'});
+  hello(); setTimeout(hello, 1500); setTimeout(hello, 4000);
 }
 
-function fmtStat(v,k){
-  if(v===undefined||v===null) return '?';
-  if(k==='height') return (v/10).toFixed(1)+'m';
-  if(k==='weight') return (v/10).toFixed(1)+'kg';
-  return v;
-}
-function updConsigna(){
-  const el=document.getElementById('consigna-display');
-  const stat=document.getElementById('consigna-stat');
-  if(!state.consigna){el.textContent='—';return;}
-  if(state.consignaVisible){
-    el.textContent=state.consigna.label;
-    el.style.color='';
-  } else {
-    el.innerHTML='<span class="consigna-hidden-badge">🔒 Consigna oculta</span>';
+/* =========================================================
+   PANEL
+   ========================================================= */
+function initPanel(){
+  document.getElementById('panel').classList.remove('hidden');
+  const f = { types:new Set(), typeMode:'any', gens:new Set(), stat:6, order:'desc', mins:[0,0,0,0,0,0] };
+  let excluded = new Set();
+  let show = null; // lo que está "en el aire": {key,title,tags,entries,revealed}
+
+  // UI de filtros
+  const typeChips = document.getElementById('typeChips');
+  TYPES.forEach(([n,c],i)=> typeChips.insertAdjacentHTML('beforeend', `<button class="chip type" style="background:${c}" data-t="${i+1}">${n}</button>`));
+  const genChips = document.getElementById('genChips');
+  for (let g=1; g<=9; g++) genChips.insertAdjacentHTML('beforeend', `<button class="chip" data-g="${g}">Gen ${g}</button>`);
+  const statSel = document.getElementById('statSel');
+  STATS.forEach((s,i)=> statSel.insertAdjacentHTML('beforeend', `<option value="${i}">${s}</option>`));
+  statSel.value = 6;
+  const mins = document.getElementById('mins');
+  STATS.slice(0,6).forEach((s,i)=> mins.insertAdjacentHTML('beforeend', `<label style="font-size:12px;color:var(--muted)">${s}<input type="number" min="0" max="255" placeholder="0" data-m="${i}"></label>`));
+
+  const seg = (id, key) => { const el=document.getElementById(id); const sync=()=>el.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v===f[key])); el.onclick=e=>{ if(e.target.dataset.v){ f[key]=e.target.dataset.v; sync(); refresh(); } }; sync(); };
+  seg('typeMode','typeMode'); seg('orderSeg','order');
+
+  typeChips.onclick = e => { const t=+e.target.dataset.t; if(!t) return; f.types.has(t)?f.types.delete(t):f.types.add(t); e.target.classList.toggle('on'); refresh(); };
+  genChips.onclick = e => { const g=+e.target.dataset.g; if(!g) return; f.gens.has(g)?f.gens.delete(g):f.gens.add(g); e.target.classList.toggle('on'); refresh(); };
+  document.querySelectorAll('[data-clear]').forEach(b=> b.onclick=()=>{ f[b.dataset.clear].clear(); (b.dataset.clear==='types'?typeChips:genChips).querySelectorAll('.chip').forEach(c=>c.classList.remove('on')); refresh(); });
+  statSel.onchange = () => { f.stat=+statSel.value; refresh(); };
+  mins.oninput = e => { const i=e.target.dataset.m; if(i!==undefined){ f.mins[i]=+e.target.value||0; refresh(); } };
+  ['incLeg','incMyth','incForms','onlyFinal'].forEach(id=> document.getElementById(id).onchange = refresh);
+
+  function filtered(){
+    const leg=incLeg.checked, myth=incMyth.checked, forms=incForms.checked, fin=onlyFinal.checked;
+    let r = DEX.filter(p=>{
+      if (!forms && p[6]) return false;
+      if (!leg && p[5]===1) return false;
+      if (!myth && p[5]===2) return false;
+      if (fin && p[7]) return false;
+      if (f.gens.size && !f.gens.has(p[2])) return false;
+      if (f.types.size){
+        const t=p[3];
+        if (f.typeMode==='any' && !t.some(x=>f.types.has(x))) return false;
+        if (f.typeMode==='all' && ![...f.types].every(x=>t.includes(x))) return false;
+        if (f.typeMode==='mono' && !(t.length===1 && f.types.has(t[0]))) return false;
+      } else if (f.typeMode==='mono' && p[3].length!==1) return false;
+      for (let i=0;i<6;i++) if (p[4][i] < f.mins[i]) return false;
+      return true;
+    });
+    r.sort((a,b)=> (f.order==='desc'?-1:1)*(statVal(a,f.stat)-statVal(b,f.stat)) || a[0]-b[0]);
+    return r;
   }
-  stat.textContent=`${Object.keys(state.revealed).length}/10`;
-  if(mode==='mod'){
-    const b=document.getElementById('btn-consigna');
-    if(b){b.textContent=state.consignaVisible?'🙈 Ocultar consigna':'👁 Revelar consigna';b.className=state.consignaVisible?'btn-sm active':'btn-sm';}
+  function autoTitle(){
+    const st = STATS[f.stat], dir = f.order==='desc' ? 'más' : 'menos';
+    return `Los Pokémon con ${dir} ${st.toLowerCase()}`;
   }
-}
-function renderScore(){
-  const sb=document.getElementById('scoreboard');
-  if(!sb) return;
-  sb.innerHTML='';
-  Object.entries(state.scores).sort((a,b)=>b[1]-a[1]).forEach(([name,pts])=>{
-    const el=document.createElement('div');
-    el.className='score-pill';
-    el.innerHTML=`<span class="score-name">${name}</span><span class="score-pts">${pts}p</span><span class="score-del" onclick="removePlayer('${esc(name)}')">✕</span>`;
-    sb.appendChild(el);
-  });
-}
-const esc=s=>s.replace(/'/g,"\\'");
-
-// ── ACTIONS ────────────────────────────────────────
-async function generateNewGame(c){
-  if(!pool.length) pool=buildPool();
-  const consigna=c||pool.shift();
-  if(!consigna){pool=buildPool();return generateNewGame();}
-  const pokemon=await fetchForConsigna(consigna);
-  if(pokemon.length<10){toast('No hay suficientes Pokémon, probando otra...');return generateNewGame();}
-  state.consigna=consigna;state.pokemon=pokemon;
-  state.revealed={};state.consignaVisible=false;
-  state.timerRunning=false;state.timerEnd=null;
-  clearInterval(timerIv);updTimer();
-  broadcast({type:'state',payload:ser()});
-  renderCards();
-  // Apply heights after render
-  setTimeout(applyCardHeights,0);
-}
-
-function revealCard(i){
-  if(state.revealed[i]) return;
-  state.revealed[i]=true;
-  playReveal();
-  broadcast({type:'reveal',payload:{index:i,revealed:state.revealed}});
-  renderCards();
-  setTimeout(()=>{
-    const card=document.getElementById(`card-${i}`);
-    if(card) card.classList.add('just-revealed');
-    setTimeout(()=>card&&card.classList.remove('just-revealed'),400);
-    applyCardHeights();
-  },0);
-}
-function toggleConsigna(){
-  state.consignaVisible=!state.consignaVisible;
-  broadcast({type:'cv',payload:{visible:state.consignaVisible}});
-  updConsigna();
-}
-function addPoints(){
-  const name=document.getElementById('pname').value.trim();
-  const pts=parseInt(document.getElementById('ppts').value)||1;
-  if(!name) return;
-  state.scores[name]=(state.scores[name]||0)+pts;
-  broadcast({type:'scores',payload:state.scores});
-  renderScore();
-  toast(`+${pts}pt a ${name}`);
-}
-function removePlayer(name){
-  delete state.scores[name];
-  broadcast({type:'scores',payload:state.scores});
-  renderScore();
-}
-function resetAll(){
-  if(!confirm('¿Resetear la ronda?')) return;
-  state.revealed={};state.scores={};state.consignaVisible=false;
-  state.timerRunning=false;state.timerEnd=null;
-  clearInterval(timerIv);updTimer();
-  broadcast({type:'state',payload:ser()});
-  renderCards();
-  setTimeout(applyCardHeights,0);
-}
-function ser(){return{consigna:state.consigna,consignaVisible:state.consignaVisible,pokemon:state.pokemon,revealed:state.revealed,scores:state.scores,timerRunning:state.timerRunning,timerEnd:state.timerEnd};}
-function applyS(s){
-  if(s.consigna) state.consigna=s.consigna;
-  if(s.pokemon)  state.pokemon=s.pokemon;
-  if(s.revealed) state.revealed=s.revealed;
-  if(s.scores)   state.scores=s.scores;
-  state.consignaVisible=!!s.consignaVisible;
-  state.timerRunning=!!s.timerRunning;
-  state.timerEnd=s.timerEnd||null;
-  if(state.timerRunning) startTick(); else {clearInterval(timerIv);updTimer();}
-  renderCards();
-  setTimeout(applyCardHeights,50);
-}
-
-// ── CONSIGNA MENU ──────────────────────────────────
-function showConsignaMenu(){
-  if(!pool.length) pool=buildPool();
-  const list=document.getElementById('clist');
-  list.innerHTML='';
-  pool.slice(0,24).forEach(c=>{
-    const b=document.createElement('button');
-    b.className='btn-sm';b.style.textAlign='left';b.textContent=c.label;
-    b.onclick=()=>{closeModal();generateNewGame(c);};
-    list.appendChild(b);
-  });
-  document.getElementById('cmodal').style.display='flex';
-}
-function closeModal(){document.getElementById('cmodal').style.display='none';}
-
-// ── REALTIME ───────────────────────────────────────
-function broadcast(msg){if(channel) channel.send({type:'broadcast',event:'quiz',payload:msg});}
-function onMsg(msg){
-  if(msg.type==='state') applyS(msg.payload);
-  else if(msg.type==='reveal'){
-    const prev=state.revealed[msg.payload.index];
-    state.revealed=msg.payload.revealed;
-    if(!prev&&state.revealed[msg.payload.index]) playReveal();
-    renderCards();
-    setTimeout(()=>{
-      const card=document.getElementById(`card-${msg.payload.index}`);
-      if(card) card.classList.add('just-revealed');
-      setTimeout(()=>card&&card.classList.remove('just-revealed'),400);
-      applyCardHeights();
-    },0);
-    updConsigna();
+  function tags(){
+    const t=[];
+    if (f.types.size) t.push([...f.types].map(x=>TYPES[x-1][0]).join(f.typeMode==='all'?' + ':' / ') + (f.typeMode==='mono'?' (monotipo)':''));
+    if (f.gens.size) t.push('Gen ' + [...f.gens].sort((a,b)=>a-b).join(', '));
+    t.push(STATS[f.stat]);
+    return t;
   }
-  else if(msg.type==='scores'){state.scores=msg.payload;renderScore();}
-  else if(msg.type==='cv'){state.consignaVisible=msg.payload.visible;updConsigna();}
-  else if(msg.type==='timer'){
-    state.timerRunning=msg.payload.running;state.timerEnd=msg.payload.end;
-    if(state.timerRunning) startTick(); else{clearInterval(timerIv);updTimer();}
+
+  const list = document.getElementById('list'), titleIn = document.getElementById('titleIn');
+  let current = [];
+  function refresh(){
+    current = filtered();
+    const shown = current.slice(0, 40);
+    document.getElementById('count').textContent = `${current.length} Pokémon cumplen el filtro. Se muestran los primeros ${Math.min(40,current.length)}. Tocá ✕ para sacar uno del top.`;
+    if (!titleIn.dataset.touched) titleIn.value = autoTitle();
+    let pos = 0;
+    list.innerHTML = shown.length ? shown.map((p,i)=>{
+      const out = excluded.has(p[0]); if(!out) pos++;
+      const v = statVal(p,f.stat), prev = shown[i-1], next = shown[i+1];
+      const tie = (prev && statVal(prev,f.stat)===v) || (next && statVal(next,f.stat)===v);
+      const inShow = show && show.ids.indexOf(p[0]);
+      return `<div class="item ${out?'out':''} ${show && inShow>-1 && show.revealed[inShow]?'rev':''}">
+        <div class="pos">${out?'—':pos}</div><img src="${SPRITE(p[0])}" alt="" loading="lazy">
+        <div><div class="nm">${p[1]}</div><div class="meta">${p[3].map(tpChip).join('')} <span>Gen ${p[2]}</span> ${tie?'<span class="tie">Empate</span>':''}</div></div>
+        <div class="val">${v}</div>
+        ${show && inShow>-1 ? `<button class="btn sm" data-rev="${inShow}">${show.revealed[inShow]?'Ocultar':'Revelar'}</button>` : '<span></span>'}
+        <button class="btn sm x" data-ex="${p[0]}">${out?'Volver':'✕'}</button>
+      </div>`;}).join('') : '<p class="empty">Ningún Pokémon cumple este filtro. Probá sacando un tipo o una generación.</p>';
   }
-  else if(msg.type==='request_state'&&mode==='mod'){
-    setTimeout(()=>broadcast({type:'state',payload:ser()}),300);
+  list.onclick = e => {
+    const ex = e.target.dataset.ex, rv = e.target.dataset.rev;
+    if (ex){ const id=+ex; excluded.has(id)?excluded.delete(id):excluded.add(id); refresh(); }
+    if (rv!==undefined){ show.revealed[rv]=!show.revealed[rv]; broadcast(); }
+  };
+  titleIn.oninput = () => { titleIn.dataset.touched = 1; if (show){ show.title = titleIn.value; broadcast(); } };
+
+  document.getElementById('buildBtn').onclick = () => {
+    const top = current.filter(p=>!excluded.has(p[0])).slice(0, TOP_N);
+    if (!top.length) return;
+    show = { key: Date.now(), title: titleIn.value || autoTitle(), tags: tags(), ids: top.map(p=>p[0]),
+      entries: top.map(p=>({id:p[0], name:p[1], types:p[3], value:statVal(p,f.stat)})), revealed: top.map(()=>false) };
+    broadcast();
+  };
+  const revealOrder = document.getElementById('revealOrder');
+  document.getElementById('revealNext').onclick = () => {
+    if (!show) return;
+    const idx = [...show.revealed.keys()]; if (revealOrder.value==='bottom') idx.reverse();
+    const i = idx.find(i=>!show.revealed[i]); if (i!==undefined){ show.revealed[i]=true; broadcast(); }
+  };
+  document.getElementById('revealAll').onclick = () => { if(show){ show.revealed=show.revealed.map(()=>true); broadcast(); } };
+  document.getElementById('hideAll').onclick = () => { if(show){ show.revealed=show.revealed.map(()=>false); broadcast(); } };
+  document.getElementById('openTv').onclick = () => window.open(`${location.pathname}?tv&sala=${encodeURIComponent(room)}`, 'top10tv');
+
+  function broadcast(){
+    if (!show) return;
+    const s = {key:show.key, title:show.title, tags:show.tags, entries:show.entries, revealed:show.revealed};
+    try{ localStorage.setItem('top10_state_'+room, JSON.stringify(s)); }catch(e){}
+    send({t:'state', s}); refresh();
   }
+  const roomIn = document.getElementById('roomIn'); roomIn.value = room;
+  document.getElementById('roomBtn').onclick = () => { room = roomIn.value.trim() || 'principal'; try{localStorage.setItem('top10_room',room);}catch(e){} connect(onMsg); broadcast(); };
+  const onMsg = m => { if (m.t==='hello') broadcast(); };
+  connect(onMsg);
+  refresh();
 }
 
-// ── UI HELPERS ─────────────────────────────────────
-function setLoading(show,txt='Cargando...'){
-  document.getElementById('loading-text').textContent=txt;
-  document.getElementById('loading').classList.toggle('hidden',!show);
-}
-let toastT;
-function toast(msg){
-  const el=document.getElementById('toast');
-  el.textContent=msg;el.classList.add('show');
-  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),2200);
-}
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-
-// ── INIT ───────────────────────────────────────────
-async function selectMode(m){
-  mode=m;
-  document.getElementById('mode-screen').style.display='none';
-  sbClient=supabase.createClient(SB_URL,SB_KEY);
-  channel=sbClient.channel(CHANNEL,{config:{broadcast:{self:false}}});
-  channel.on('broadcast',{event:'quiz'},({payload})=>onMsg(payload));
-  channel.subscribe(status=>{
-    const dot=document.getElementById('status-dot');
-    const txt=document.getElementById('status-text');
-    if(status==='SUBSCRIBED'){
-      dot.classList.add('live');txt.textContent=`En vivo · ${CHANNEL}`;
-      if(m==='spectator') setTimeout(()=>channel.send({type:'broadcast',event:'quiz',payload:{type:'request_state'}}),800);
-    } else {dot.classList.remove('live');txt.textContent='Reconectando...';}
-  });
-  document.getElementById('app').style.display='flex';
-  if(m==='mod'){
-    document.getElementById('mod-panel').style.display='flex';
-    setLoading(false);
-    pool=buildPool();
-    await generateNewGame();
-  } else {
-    setLoading(false);
-    document.getElementById('consigna-display').textContent='Esperando al mod...';
-  }
-  setTimeout(applyCardHeights,100);
-}
-
-setLoading(false);
-document.getElementById('mode-screen').style.display='flex';
+IS_TV ? initTV() : initPanel();
 </script>
 </body>
 </html>
