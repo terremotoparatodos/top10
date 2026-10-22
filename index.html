@@ -92,6 +92,8 @@ input[type=text],input[type=number],select{background:var(--bg);border:2px solid
 .back .tps .tp{font-size:1.7vh;padding:.2vh 1.2vh}
 .back .v{font-family:var(--display);font-size:5.4vh;padding:0 3vh;color:var(--gold)}
 .tv-foot{position:fixed;bottom:1.2vh;right:1.6vw;font-size:1.6vh;color:var(--muted);opacity:.6}
+.sound-btn{position:fixed;bottom:1.2vh;left:1.6vw;font-size:1.8vh;font-weight:700;padding:.6vh 1.4vh;border-radius:999px;border:.25vh solid var(--gold);background:var(--gold);color:#1A1A1A;cursor:pointer}
+.sound-btn.on{background:transparent;color:var(--muted);border-color:var(--line);opacity:.6}
 
 @media (max-width:820px){#panel{grid-template-columns:1fr}.side,.main{max-height:none}.item{grid-template-columns:34px 44px 1fr auto;}.item .x{display:none}}
 @media (prefers-reduced-motion:reduce){.card{transition:none}}
@@ -179,6 +181,7 @@ input[type=text],input[type=number],select{background:var(--bg);border:2px solid
   </div>
   <div class="board" id="board"></div>
   <div class="tv-foot" id="tvFoot"></div>
+  <button class="sound-btn" id="soundBtn">🔇 Activar sonido</button>
 </div>
 
 <script>
@@ -237,11 +240,61 @@ const statVal = (p, s) => s === 8 ? HW[p[0]][0] : s === 7 ? HW[p[0]][1] : s === 
 const statText = (p, s) => s === 7 ? statVal(p,s).toLocaleString('es-AR') + ' kg' : s === 8 ? statVal(p,s).toLocaleString('es-AR') + ' m' : statVal(p,s);
 
 /* =========================================================
+   SONIDO (solo TV). Efectos sintetizados + grito del Pokémon.
+   El navegador exige un clic en la página antes de reproducir audio.
+   ========================================================= */
+const CRY = id => `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`;
+const sound = {
+  ctx: null,
+  on: false,
+  enable(){
+    this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx.resume(); this.on = true;
+  },
+  tone(freq, start, dur, type='triangle', vol=.18){
+    const c=this.ctx, o=c.createOscillator(), g=c.createGain(), t=c.currentTime+start;
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+.01); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g).connect(c.destination); o.start(t); o.stop(t+dur+.05);
+  },
+  whoosh(){
+    const c=this.ctx, len=c.sampleRate*.35, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+    for (let i=0;i<len;i++) d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain();
+    src.buffer=buf; f.type='bandpass'; f.Q.value=1.2;
+    f.frequency.setValueAtTime(600,c.currentTime); f.frequency.exponentialRampToValueAtTime(3000,c.currentTime+.3);
+    g.gain.value=.35; src.connect(f).connect(g).connect(c.destination); src.start();
+  },
+  // Al girar una carta: whoosh + golpe; el #1 lleva fanfarria
+  reveal(pos){
+    if (!this.on) return;
+    this.whoosh();
+    this.tone(pos === 0 ? 523 : 392, .55, .25, 'square', .08);
+    if (pos === 0) [523,659,784,1047].forEach((f,i)=> this.tone(f, .7+i*.12, i===3 ? .9 : .3, 'triangle', .2));
+  },
+  // Top nuevo en pantalla
+  newTop(){
+    if (!this.on) return;
+    [392,523,659].forEach((f,i)=> this.tone(f, i*.09, .35, 'sine', .15));
+  },
+  cry(id, delay){
+    if (!this.on) return;
+    setTimeout(()=>{ const a=new Audio(CRY(id)); a.volume=.5; a.play().catch(()=>{}); }, delay);
+  }
+};
+
+/* =========================================================
    VISTA TV
    ========================================================= */
 function initTV(){
   document.getElementById('tv').classList.remove('hidden');
   document.getElementById('tvFoot').textContent = 'Sala ' + room;
+  const soundBtn = document.getElementById('soundBtn');
+  soundBtn.onclick = () => {
+    if (sound.on) sound.on = false; else sound.enable();
+    soundBtn.textContent = sound.on ? '🔊 Sonido' : '🔇 Activar sonido';
+    soundBtn.classList.toggle('on', sound.on);
+  };
   let last = null;
   const render = s => {
     const board = document.getElementById('board');
@@ -259,6 +312,13 @@ function initTV(){
       }
     }
     board.querySelectorAll('.slot').forEach((el,i)=> el.classList.toggle('open', !!(s && s.revealed[i] && s.entries[i])));
+    if (s && last && !sameSet) sound.newTop();
+    if (sameSet){
+      const opened = s.revealed.map((r,i)=> r && !last.revealed[i] && s.entries[i] ? i : -1).filter(i=>i>-1);
+      // Varias a la vez ("Revelar todo"): un solo efecto y sin gritos
+      if (opened.length === 1){ sound.reveal(opened[0]); sound.cry(s.entries[opened[0]].id, opened[0] === 0 ? 1500 : 700); }
+      else if (opened.length) sound.reveal(Math.min(...opened));
+    }
     last = s;
   };
   render(null);
